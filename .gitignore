@@ -1,0 +1,47 @@
+# ── Secrets & environment ─────────────────────────────────────────────────────
+.env
+*.env
+.env.*
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+venv_django/
+.venv/
+env/
+ENV/
+
+# ── Django ────────────────────────────────────────────────────────────────────
+db.sqlite3
+*.sqlite3
+/staticfiles/
+/mediafiles/
+/media/
+*.log
+
+# ── Byte-compiled / optimised ─────────────────────────────────────────────────
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── OS & editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Coverage / testing ────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/

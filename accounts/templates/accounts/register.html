@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Register — AI Transcriber{% endblock %}
+{% block main_class %}flex items-center justify-center min-h-[calc(100vh-57px)] p-4 py-10 bg-gradient-to-b from-lime-50 to-white{% endblock %}
+{% block content %}
+<div class="w-full max-w-md animate-fade-up">
+  <div class="text-center mb-6">
+    <h1 class="text-2xl font-bold text-slate-900">Create Account</h1>
+    <p class="text-slate-500 text-sm mt-1">Register and wait for admin approval</p>
+  </div>
+  <div class="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/80 border border-slate-100">
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">First name</label>
+          <input name="first_name" type="text" value="{{ form.first_name.value|default:'' }}"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Last name</label>
+          <input name="last_name" type="text" value="{{ form.last_name.value|default:'' }}"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+      </div>
+
+      {% for field in form %}
+        {% if field.name in 'username,email,phone,company,password1,password2' %}
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">
+            {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+          </label>
+          <input name="{{ field.name }}"
+                 type="{% if 'password' in field.name %}password{% elif field.name == 'email' %}email{% else %}text{% endif %}"
+                 value="{{ field.value|default:'' }}"
+                 class="w-full bg-slate-50 border {% if field.errors %}border-red-400{% else %}border-slate-200{% endif %} rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-lime-500 transition-colors"
+                 placeholder="{{ field.label }}" />
+          {% if field.errors %}<p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      <button type="submit"
+              class="w-full py-3.5 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/30 transition-all duration-300 text-sm mt-2">
+        Create Account
+      </button>
+    </form>
+    <p class="text-center text-slate-500 text-xs mt-5">
+      Already have an account?
+      <a href="{% url 'accounts:login' %}" class="text-lime-600 hover:text-lime-700 font-medium transition-colors">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

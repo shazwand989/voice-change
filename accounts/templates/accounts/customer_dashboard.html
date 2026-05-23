@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}My Account — AI Transcriber{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6 animate-fade-up">
+
+  <h1 class="text-2xl font-bold text-slate-900">My Account</h1>
+
+  <!-- Status / package card -->
+  {% if cp %}
+  <div class="card p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-slate-500 text-xs uppercase tracking-wide mb-1">Active Package</p>
+        <p class="text-slate-900 font-bold text-lg">{{ cp.package.name }}</p>
+        <p class="text-slate-500 text-xs mt-0.5">{{ cp.package.description }}</p>
+      </div>
+      <div class="text-right">
+        <p class="text-slate-500 text-xs">Assigned</p>
+        <p class="text-slate-700 text-sm">{{ cp.assigned_at|date:"M d, Y" }}</p>
+      </div>
+    </div>
+
+    <!-- Usage bar -->
+    {% if cp.package.max_transcriptions != -1 %}
+    <div>
+      <div class="flex justify-between text-xs text-slate-500 mb-1.5">
+        <span>Transcriptions used</span>
+        <span>{{ cp.transcriptions_used }} / {{ cp.package.max_transcriptions }}</span>
+      </div>
+      <div class="w-full bg-slate-100 rounded-full h-2">
+        <div class="bg-gradient-to-r from-lime-500 to-emerald-500 h-2 rounded-full transition-all"
+             style="width:{{ cp.usage_percent }}%"></div>
+      </div>
+      {% if not cp.can_transcribe %}
+      <p class="text-red-600 text-xs mt-2">⚠ Limit reached. Contact admin for a new package.</p>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="text-lime-600 text-sm flex items-center gap-2 font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      Unlimited transcriptions
+    </p>
+    {% endif %}
+
+    <div class="grid grid-cols-3 gap-3 text-center pt-2 border-t border-slate-100">
+      <div>
+        <p class="text-slate-500 text-xs">Remaining</p>
+        <p class="text-slate-900 font-bold">{% if cp.transcriptions_remaining == None %}∞{% else %}{{ cp.transcriptions_remaining }}{% endif %}</p>
+      </div>
+      <div>
+        <p class="text-slate-500 text-xs">File size limit</p>
+        <p class="text-slate-900 font-bold">{% if cp.package.max_file_size_mb == -1 %}∞{% else %}{{ cp.package.max_file_size_mb }} MB{% endif %}</p>
+      </div>
+      <div>
+        <p class="text-slate-500 text-xs">Uploads (MB)</p>
+        <p class="text-slate-900 font-bold">{{ cp.uploads_used_mb|floatformat:1 }}</p>
+      </div>
+    </div>
+  </div>
+
+  {% if cp.can_transcribe %}
+  <a href="{% url 'transcriber:index' %}"
+     class="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/30 transition-all duration-300 text-sm">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+    Go to Transcriber
+  </a>
+  {% endif %}
+
+  {% else %}
+  <div class="card p-6 text-center border-yellow-200 bg-yellow-50">
+    <p class="text-yellow-700 text-sm font-medium">
+      {% if user.status == 'pending' %}
+        Your account is pending admin approval.
+      {% elif user.status == 'approved' %}
+        You are approved but no package has been assigned yet. Please contact admin.
+      {% else %}
+        Your account status: <span class="capitalize">{{ user.status }}</span>
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Recent transcriptions -->
+  {% if recent %}
+  <div>
+    <h2 class="text-slate-900 font-semibold mb-3">Recent Transcriptions</h2>
+    <div class="space-y-2">
+      {% for t in recent %}
+      <div class="card-sm rounded-xl p-4 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-slate-800 text-sm truncate">{{ t.filename }}</p>
+          <p class="text-slate-500 text-xs">{{ t.created_at|date:"M d, Y H:i" }}</p>
+        </div>
+        <span class="text-lime-600 text-sm font-bold flex-shrink-0">${{ t.total_cost_usd|floatformat:6 }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8 animate-fade-up">
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+    <div class="flex gap-2">
+      <a href="{% url 'packages:create' %}"
+         class="px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors shadow-sm">
+        + New Package
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="card p-5 text-center">
+      <p class="text-3xl font-bold text-slate-900">{{ stats.total }}</p>
+      <p class="text-slate-500 text-xs mt-1">Total Customers</p>
+    </div>
+    <div class="card p-5 text-center border-yellow-200 bg-yellow-50">
+      <p class="text-3xl font-bold text-yellow-600">{{ stats.pending }}</p>
+      <p class="text-slate-500 text-xs mt-1">Pending Approval</p>
+    </div>
+    <div class="card p-5 text-center border-lime-200 bg-lime-50">
+      <p class="text-3xl font-bold text-lime-600">{{ stats.approved }}</p>
+      <p class="text-slate-500 text-xs mt-1">Approved</p>
+    </div>
+    <div class="card p-5 text-center border-red-200 bg-red-50">
+      <p class="text-3xl font-bold text-red-600">{{ stats.rejected|add:stats.deactivated }}</p>
+      <p class="text-slate-500 text-xs mt-1">Rejected / Deactivated</p>
+    </div>
+    <div class="card p-5 text-center border-emerald-200 bg-emerald-50">
+      <p class="text-3xl font-bold text-emerald-600">{{ stats.packages }}</p>
+      <p class="text-slate-500 text-xs mt-1">Packages</p>
+    </div>
+    <div class="card p-5 text-center border-blue-200 bg-blue-50">
+      <p class="text-3xl font-bold text-blue-600">{{ stats.transcriptions }}</p>
+      <p class="text-slate-500 text-xs mt-1">Transcriptions</p>
+    </div>
+    <div class="card p-5 text-center border-lime-200 bg-lime-50 col-span-2">
+      <p class="text-3xl font-bold text-lime-700">${{ stats.total_cost|floatformat:4 }}</p>
+      <p class="text-slate-500 text-xs mt-1">Total AI Spend</p>
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div class="grid grid-cols-3 gap-3">
+    <a href="{% url 'accounts:user_list' %}?status=pending"
+       class="card p-5 hover:border-yellow-300 hover:bg-yellow-50 transition-all group">
+      <p class="text-yellow-600 font-bold text-lg group-hover:text-yellow-700">{{ stats.pending }}</p>
+      <p class="text-slate-500 text-sm mt-1">Pending Approvals →</p>
+    </a>
+    <a href="{% url 'accounts:user_list' %}"
+       class="card p-5 hover:border-lime-300 hover:bg-lime-50 transition-all group">
+      <p class="text-slate-900 font-bold text-lg">All Users →</p>
+      <p class="text-slate-500 text-sm mt-1">Manage customers</p>
+    </a>
+    <a href="{% url 'packages:list' %}"
+       class="card p-5 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
+      <p class="text-emerald-600 font-bold text-lg">{{ stats.packages }} Packages →</p>
+      <p class="text-slate-500 text-sm mt-1">Manage service plans</p>
+    </a>
+  </div>
+
+  <!-- Pending users -->
+  {% if pending_users %}
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-slate-900 font-semibold">Pending Registrations</h2>
+      <a href="{% url 'accounts:user_list' %}?status=pending" class="text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">View all →</a>
+    </div>
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-100 bg-slate-50">
+          <tr>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Username</th>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Email</th>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Joined</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for u in pending_users %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-5 py-3 text-slate-900 font-medium">{{ u.username }}</td>
+            <td class="px-5 py-3 text-slate-500">{{ u.email }}</td>
+            <td class="px-5 py-3 text-slate-500">{{ u.date_joined|date:"M d, Y" }}</td>
+            <td class="px-5 py-3 text-right">
+              <a href="{% url 'accounts:user_detail' u.id %}" class="text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">Review →</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AI Transcriber{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{animation:{'fade-up':'fade-up 0.35s ease forwards'},keyframes:{'fade-up':{'0%':{opacity:'0',transform:'translateY(12px)'},'100%':{opacity:'1',transform:'translateY(0)'}}}}}}</script>
+  <style>
+    body{background:#f8fafc}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+    .card-sm{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#84cc16;border-radius:2px}
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen font-sans text-slate-800">
+
+  <!-- Nav -->
+  <nav class="bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex items-center gap-4 flex-wrap sticky top-0 z-40">
+    <a href="{% url 'landing' %}" class="text-lime-600 font-bold text-sm mr-auto flex items-center gap-2 hover:text-lime-700 transition-colors">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+      </div>
+      AI<span class="text-slate-900">Transcriber</span>
+    </a>
+
+    {% if user.is_authenticated %}
+      {% if user.is_admin_role %}
+        <a href="{% url 'accounts:admin_dashboard' %}" class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Dashboard</a>
+        <a href="{% url 'accounts:user_list' %}"       class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Users</a>
+        <a href="{% url 'packages:list' %}"            class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Packages</a>
+        <a href="{% url 'transcriber:index' %}"        class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Transcriber</a>
+      {% else %}
+        <a href="{% url 'transcriber:index' %}"  class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Transcriber</a>
+        <a href="{% url 'accounts:dashboard' %}" class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">My Account</a>
+      {% endif %}
+
+      <div class="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
+        <span class="text-xs text-slate-500">{{ user.username }}</span>
+        {% if user.is_admin_role %}
+          <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
+        {% else %}
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize
+            {% if user.status == 'approved' %}bg-lime-100 text-lime-700
+            {% elif user.status == 'pending' %}bg-yellow-100 text-yellow-700
+            {% else %}bg-red-100 text-red-700{% endif %}">{{ user.status }}</span>
+        {% endif %}
+        <a href="{% url 'accounts:logout' %}" class="text-xs text-slate-400 hover:text-red-500 transition-colors ml-1">Logout</a>
+      </div>
+    {% endif %}
+  </nav>
+
+  <!-- Flash messages -->
+  {% if messages %}
+  <div class="px-6 pt-4 space-y-2 max-w-4xl mx-auto">
+    {% for m in messages %}
+    <div class="rounded-xl px-4 py-3 text-sm border
+      {% if m.tags == 'error' %}bg-red-50 border-red-200 text-red-700
+      {% elif m.tags == 'warning' %}bg-yellow-50 border-yellow-200 text-yellow-700
+      {% else %}bg-lime-50 border-lime-200 text-lime-700{% endif %}">
+      {{ m }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Content -->
+  <main class="{% block main_class %}p-6{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

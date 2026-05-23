@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Transcriber — Turn Audio & Video into Smart AI Prompts</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          animation: {
+            'fade-up':   'fade-up 0.6s ease forwards',
+            'fade-up-d': 'fade-up 0.6s ease 0.15s forwards',
+            'fade-up-d2':'fade-up 0.6s ease 0.3s forwards',
+            'float':     'float 5s ease-in-out infinite',
+            'pulse-dot': 'pulse-dot 2s ease-in-out infinite',
+          },
+          keyframes: {
+            'fade-up': {
+              '0%':   { opacity:'0', transform:'translateY(24px)' },
+              '100%': { opacity:'1', transform:'translateY(0)' },
+            },
+            'float': {
+              '0%,100%': { transform:'translateY(0px)' },
+              '50%':     { transform:'translateY(-10px)' },
+            },
+            'pulse-dot': {
+              '0%,100%': { transform:'scale(1)',   opacity:'1' },
+              '50%':     { transform:'scale(1.4)', opacity:'0.7' },
+            },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .hero-bg {
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(132,204,22,.18) 0%, transparent 70%),
+                  radial-gradient(ellipse 50% 40% at 80% 60%, rgba(52,211,153,.12) 0%, transparent 60%),
+                  #ffffff;
+    }
+    .card-hover { transition: transform .25s, box-shadow .25s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(101,163,13,.12); }
+    .btn-primary {
+      background: linear-gradient(135deg, #65a30d, #84cc16);
+      transition: all .25s;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4d7c0f, #65a30d);
+      box-shadow: 0 10px 30px rgba(101,163,13,.35);
+      transform: translateY(-2px);
+    }
+    .step-line::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 48px;
+      width: 2px;
+      height: calc(100% - 48px);
+      background: linear-gradient(to bottom, #bef264, transparent);
+      transform: translateX(-50%);
+    }
+    @media (max-width:767px) { .step-line::after { display:none; } }
+  </style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+
+  <!-- ══════════ NAV ══════════ -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-b border-lime-100 shadow-sm shadow-lime-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center shadow-md shadow-lime-300/40">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+          </svg>
+        </div>
+        <span class="font-bold text-slate-900 text-lg tracking-tight">AI<span class="text-lime-600">Transcriber</span></span>
+      </div>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+        <a href="#features" class="hover:text-lime-700 transition-colors">Features</a>
+        <a href="#try"      class="hover:text-lime-700 transition-colors">Free Trial</a>
+        <a href="#packages" class="hover:text-lime-700 transition-colors">Packages</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'accounts:login' %}"
+           class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors px-3 py-2 rounded-lg hover:bg-lime-50">
+          Sign In
+        </a>
+        <a href="{% url 'accounts:register' %}"
+           class="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-lime-300/30">
+          Get Started Free
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════ HERO ══════════ -->
+  <section class="hero-bg pt-32 pb-24 px-6 overflow-hidden">
+    <div class="max-w-4xl mx-auto text-center">
+
+      <div class="inline-flex items-center gap-2 bg-lime-100 border border-lime-200 text-lime-700 rounded-full px-4 py-1.5 text-sm font-semibold mb-8 animate-fade-up">
+        <span class="w-2 h-2 rounded-full bg-lime-500 animate-pulse-dot inline-block"></span>
+        Powered by OpenAI Whisper &amp; GPT
+      </div>
+
+      <h1 class="text-5xl md:text-6xl font-extrabold text-slate-900 leading-[1.1] mb-6 animate-fade-up opacity-0"
+          style="animation-delay:.05s;animation-fill-mode:forwards">
+        Turn any <span class="text-lime-500">audio</span> or <span class="text-lime-500">video</span><br/>
+        into smart AI prompts
+      </h1>
+
+      <p class="text-xl text-slate-500 max-w-2xl mx-auto mb-10 animate-fade-up-d opacity-0">
+        Upload your media file — our AI transcribes it instantly and generates
+        a ready-to-use AI prompt from the content. Save time, get results.
+      </p>
+
+      <div class="flex items-center justify-center gap-3 flex-wrap animate-fade-up-d2 opacity-0">
+        <a href="{% url 'transcriber:trial_index' %}"
+           class="bg-white text-lime-700 hover:bg-lime-50 font-bold px-8 py-4 rounded-2xl text-base border-2 border-lime-400 hover:border-lime-500 shadow-lg transition-all flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Try Free (No Account)
+        </a>
+        <a href="{% url 'accounts:register' %}"
+           class="btn-primary text-white font-bold px-8 py-4 rounded-2xl text-base shadow-xl shadow-lime-300/40 flex items-center gap-2">
+          Get Full Access
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+        </a>
+        <a href="{% url 'accounts:login' %}"
+           class="text-slate-600 hover:text-lime-700 font-medium px-5 py-4 transition-colors text-base">
+          Sign in →
+        </a>
+      </div>
+
+      <!-- Hero card preview -->
+      <div class="mt-16 max-w-2xl mx-auto animate-float">
+        <div class="bg-white rounded-3xl shadow-2xl shadow-lime-200/50 border border-lime-100 p-6 text-left">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <div class="w-3 h-3 rounded-full bg-lime-400"></div>
+            <span class="text-xs text-slate-400 ml-2 font-mono">meeting_recording.mp4</span>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <p class="text-xs font-semibold text-lime-700 uppercase tracking-wide mb-1.5">Transcript</p>
+              <p class="text-sm text-slate-600 leading-relaxed bg-lime-50 rounded-xl p-3 border border-lime-100">
+                "Today we discussed the Q3 product roadmap, focusing on the new dashboard features and customer onboarding flow improvements…"
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">AI Prompt Generated</p>
+              <p class="text-sm text-slate-700 leading-relaxed bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                "Summarize the key action items from a product meeting about Q3 roadmap, including dashboard improvements and customer onboarding enhancements. Format as a prioritized task list with owners…"
+              </p>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs text-slate-400">Cost: <span class="text-lime-600 font-semibold">$0.000842</span></span>
+              <span class="text-xs bg-lime-100 text-lime-700 px-2.5 py-1 rounded-full font-medium">✓ Ready to use</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ STATS BAND ══════════ -->
+  <div class="bg-lime-600 py-10 px-6">
+    <div class="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-white">
+      <div>
+        <p class="text-3xl font-extrabold text-lime-100">10+</p>
+        <p class="text-lime-300 text-sm mt-1">File formats</p>
+      </div>
+      <div>
+        <p class="text-3xl font-extrabold text-lime-100">$0.001</p>
+        <p class="text-lime-300 text-sm mt-1">Avg cost per file</p>
+      </div>
+      <div>
+        <p class="text-3xl font-extrabold text-lime-100">&lt;30s</p>
+        <p class="text-lime-300 text-sm mt-1">Avg processing time</p>
+      </div>
+      <div>
+        <p class="text-3xl font-extrabold text-lime-100">99%</p>
+        <p class="text-lime-300 text-sm mt-1">Accuracy</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ FEATURES ══════════ -->
+  <section id="features" class="py-24 px-6 bg-white">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-16">
+        <span class="text-lime-600 font-semibold text-sm uppercase tracking-widest">Features</span>
+        <h2 class="text-4xl font-bold text-slate-900 mt-2">Everything you need</h2>
+        <p class="text-slate-500 mt-3 max-w-xl mx-auto">A complete toolkit for turning your media into actionable AI content.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {% for icon, title, desc, border in features %}{% endfor %}
+
+        <!-- Card 1 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-lime-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">Any Media Format</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            MP4, MP3, WAV, M4A, MOV, WebM, OGG, FLAC and more. Upload videos or raw audio — we handle both seamlessly.
+          </p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">AI Transcription</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            Powered by OpenAI's latest Whisper model for near-perfect accuracy across languages, accents, and noise levels.
+          </p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-lime-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">Smart AI Prompts</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            Automatically converts your transcript into a structured, ready-to-use AI prompt optimized for ChatGPT, Claude, and more.
+          </p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">Transparent Pricing</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            See the exact cost in USD for every transcription run — per token, per model. No surprises, full transparency.
+          </p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-lime-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">Full History</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            All your transcriptions saved with one-click copy and download. Review, reuse, and track your entire history.
+          </p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="card-hover bg-white rounded-2xl p-7 border border-slate-100 shadow-md shadow-slate-100/80">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <h3 class="font-bold text-slate-900 text-lg mb-2">Admin Approved Access</h3>
+          <p class="text-slate-500 text-sm leading-relaxed">
+            Role-based access with admin approval, package limits, and usage tracking — full control over who uses what.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ FREE TRIAL CALLOUT ══════════ -->
+  <section id="try" class="py-20 px-6 bg-gradient-to-br from-lime-50 to-emerald-50 border-y border-lime-100">
+    <div class="max-w-3xl mx-auto">
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+        <div class="space-y-4">
+          <div class="inline-flex items-center gap-2 bg-lime-100 border border-lime-200 text-lime-700 rounded-full px-4 py-1.5 text-sm font-semibold">
+            <span class="w-2 h-2 rounded-full bg-lime-500 inline-block"></span>
+            Free Trial
+          </div>
+          <h2 class="text-3xl font-bold text-slate-900">Try it free — no account needed</h2>
+          <p class="text-slate-500 leading-relaxed">Upload one small audio or video file and experience AI transcription and prompt generation instantly. One free trial per device, up to 5 MB.</p>
+          <a href="{% url 'transcriber:trial_index' %}"
+             class="inline-flex items-center gap-2 btn-primary text-white font-bold px-7 py-3.5 rounded-2xl shadow-lg shadow-lime-300/30">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Start Free Trial
+          </a>
+        </div>
+        <div class="bg-white rounded-2xl border border-lime-200 shadow-md p-6 space-y-4">
+          <p class="text-slate-700 font-semibold text-sm">For full access or account approval:</p>
+          <div class="space-y-3 text-sm text-slate-600">
+            <div class="flex items-start gap-3">
+              <div class="w-6 h-6 rounded-full bg-lime-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-lime-700 font-bold text-xs">1</div>
+              <p><a href="{% url 'accounts:register' %}" class="text-lime-600 underline underline-offset-2 font-medium">Register an account</a> — free and takes under a minute.</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-6 h-6 rounded-full bg-lime-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-lime-700 font-bold text-xs">2</div>
+              <p>Contact the admin via WhatsApp to request approval and package assignment.</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-6 h-6 rounded-full bg-lime-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-lime-700 font-bold text-xs">3</div>
+              <p>Once approved, log in and start transcribing with your full quota.</p>
+            </div>
+          </div>
+          <a href="https://wa.me/60192548927" target="_blank" rel="noopener noreferrer"
+             class="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-xl font-semibold text-white text-sm bg-[#25D366] hover:bg-[#1fb355] transition-colors shadow-md shadow-green-300/30">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.555 4.122 1.524 5.857L0 24l6.335-1.507A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.812 9.812 0 01-5.004-1.366l-.36-.213-3.76.895.953-3.67-.234-.375A9.815 9.815 0 012.182 12c0-5.423 4.395-9.818 9.818-9.818S21.818 6.577 21.818 12 17.423 21.818 12 21.818z"/></svg>
+            WhatsApp Admin — 019-254 8927
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ HOW IT WORKS ══════════ -->
+  <section class="py-24 px-6 bg-gradient-to-b from-lime-50/60 to-white">
+    <div class="max-w-3xl mx-auto">
+      <div class="text-center mb-16">
+        <span class="text-lime-600 font-semibold text-sm uppercase tracking-widest">How it works</span>
+        <h2 class="text-4xl font-bold text-slate-900 mt-2">3 simple steps</h2>
+      </div>
+      <div class="relative space-y-0">
+
+        <!-- Step 1 -->
+        <div class="flex gap-8 items-start pb-12 relative step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-lime-500 text-white font-bold text-lg flex items-center justify-center shadow-lg shadow-lime-300/40 z-10">
+            1
+          </div>
+          <div class="pt-2">
+            <h3 class="font-bold text-slate-900 text-xl mb-2">Register &amp; get approved</h3>
+            <p class="text-slate-500 leading-relaxed">Create your account in seconds. Once an admin approves you and assigns a package, you're ready to go.</p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex gap-8 items-start pb-12 relative step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-lg shadow-emerald-300/40 z-10">
+            2
+          </div>
+          <div class="pt-2">
+            <h3 class="font-bold text-slate-900 text-xl mb-2">Upload your file</h3>
+            <p class="text-slate-500 leading-relaxed">Drag and drop any video or audio file up to 500 MB. MP4, MP3, WAV, MOV, WebM — all formats accepted.</p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex gap-8 items-start">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-lime-600 text-white font-bold text-lg flex items-center justify-center shadow-lg shadow-lime-300/40">
+            3
+          </div>
+          <div class="pt-2">
+            <h3 class="font-bold text-slate-900 text-xl mb-2">Get your transcript + AI prompt</h3>
+            <p class="text-slate-500 leading-relaxed">In seconds, receive a full transcript and a perfectly crafted AI prompt ready to paste into any AI tool.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SUPPORTED FORMATS ══════════ -->
+  <section class="py-16 px-6 bg-white border-y border-lime-100">
+    <div class="max-w-4xl mx-auto text-center">
+      <p class="text-slate-400 text-sm font-medium uppercase tracking-widest mb-8">Supported formats</p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        {% for fmt in fmt_list %}
+        <span class="px-4 py-2 rounded-xl bg-lime-50 border border-lime-200 text-lime-700 text-sm font-semibold">{{ fmt }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ CTA ══════════ -->
+  <section id="packages" class="py-24 px-6 bg-gradient-to-b from-white to-lime-50/40">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-14">
+        <span class="text-lime-600 font-semibold text-sm uppercase tracking-widest">Packages</span>
+        <h2 class="text-4xl font-bold text-slate-900 mt-2">Choose your plan</h2>
+        <p class="text-slate-500 mt-3 max-w-xl mx-auto">All packages include AI transcription + prompt generation. Contact admin via WhatsApp to get assigned a package after registering.</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {% for pkg in packages %}
+        <div class="card-hover bg-white rounded-2xl border border-slate-100 shadow-md shadow-slate-100/80 p-6 flex flex-col{% if forloop.counter == 3 %} ring-2 ring-lime-400{% endif %}">
+          {% if forloop.counter == 3 %}
+          <div class="text-xs font-bold text-lime-700 bg-lime-100 rounded-full px-3 py-1 mb-3 self-start">Most Popular</div>
+          {% endif %}
+          <h3 class="font-bold text-slate-900 text-lg">{{ pkg.name }}</h3>
+          <p class="text-slate-500 text-xs mt-1 leading-relaxed flex-1">{{ pkg.description }}</p>
+          <div class="mt-4 space-y-2 text-sm">
+            <div class="flex items-center gap-2 text-slate-600">
+              <svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              {% if pkg.max_transcriptions == -1 %}
+                <span><strong>Unlimited</strong> transcriptions</span>
+              {% else %}
+                <span><strong>{{ pkg.max_transcriptions }}</strong> transcriptions</span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-2 text-slate-600">
+              <svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              {% if pkg.max_file_size_mb == -1 %}
+                <span><strong>Unlimited</strong> file size</span>
+              {% else %}
+                <span>Up to <strong>{{ pkg.max_file_size_mb }} MB</strong> per file</span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-2 text-slate-600">
+              <svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>All supported formats</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-600">
+              <svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Full history &amp; download</span>
+            </div>
+          </div>
+          <a href="https://wa.me/60192548927" target="_blank" rel="noopener noreferrer"
+             class="mt-5 block text-center py-2.5 rounded-xl text-sm font-semibold transition-all {% if forloop.counter == 3 %}bg-gradient-to-r from-lime-600 to-emerald-500 text-white hover:from-lime-500 hover:to-emerald-400 shadow-md shadow-lime-300/30{% else %}border border-slate-200 text-slate-700 hover:border-lime-400 hover:text-lime-700 hover:bg-lime-50{% endif %}">
+            Get this package
+          </a>
+        </div>
+        {% empty %}
+        <div class="col-span-4 text-center text-slate-400 py-10">No packages available yet.</div>
+        {% endfor %}
+      </div>
+
+      <p class="text-center text-slate-400 text-sm mt-8">
+        Pricing is based on actual AI usage (OpenAI API) — pay only for what you use.
+        <a href="https://wa.me/60192548927" target="_blank" rel="noopener noreferrer" class="text-lime-600 hover:text-lime-700 font-medium underline underline-offset-2">Contact admin</a> for custom plans.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ CTA ══════════ -->
+  <section class="py-24 px-6">
+    <div class="max-w-3xl mx-auto">
+      <div class="bg-gradient-to-br from-lime-500 to-emerald-500 rounded-3xl p-12 text-center shadow-2xl shadow-lime-300/40 relative overflow-hidden">
+        <!-- Decorative circles -->
+        <div class="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10"></div>
+        <div class="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10"></div>
+
+        <div class="relative z-10">
+          <h2 class="text-4xl font-extrabold text-white mb-4">Ready to get started?</h2>
+          <p class="text-lime-100 text-lg mb-10 max-w-lg mx-auto">
+            Join today and start turning your audio and video into powerful AI prompts in under 30 seconds.
+          </p>
+          <div class="flex items-center justify-center gap-4 flex-wrap">
+            <a href="{% url 'accounts:register' %}"
+               class="bg-white text-lime-700 hover:bg-lime-50 font-bold px-8 py-4 rounded-2xl text-base shadow-lg transition-all hover:-translate-y-0.5">
+              Create Free Account →
+            </a>
+            <a href="{% url 'accounts:login' %}"
+               class="text-white/80 hover:text-white font-medium px-8 py-4 rounded-2xl border border-white/30 hover:border-white/60 transition-all text-base">
+              Sign in
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer class="bg-slate-900 text-slate-400 py-10 px-6">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-lime-500 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+          </svg>
+        </div>
+        <span class="text-white font-semibold">AI<span class="text-lime-500">Transcriber</span></span>
+      </div>
+      <p class="text-sm">Powered by OpenAI Whisper &amp; GPT-4.1</p>
+      <div class="flex items-center gap-5 text-sm">
+        <a href="{% url 'transcriber:trial_index' %}" class="hover:text-lime-400 transition-colors">Free Trial</a>
+        <a href="{% url 'accounts:login' %}"    class="hover:text-lime-400 transition-colors">Login</a>
+        <a href="{% url 'accounts:register' %}" class="hover:text-lime-400 transition-colors">Register</a>
+        <a href="https://wa.me/60192548927" target="_blank" rel="noopener noreferrer" class="text-[#25D366] hover:text-[#1fb355] transition-colors">WhatsApp</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

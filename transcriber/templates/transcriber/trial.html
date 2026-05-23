@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Trial — AI Transcriber</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        keyframes: {
+          'fade-up': { '0%': { opacity:'0', transform:'translateY(14px)' }, '100%': { opacity:'1', transform:'translateY(0)' } },
+          'spin':    { '100%': { transform:'rotate(360deg)' } },
+          'pulse-ring': { '0%': { transform:'scale(.8)', opacity:'1' }, '100%': { transform:'scale(2)', opacity:'0' } },
+        },
+        animation: {
+          'fade-up':    'fade-up 0.4s ease forwards',
+          'spin':       'spin 1s linear infinite',
+          'pulse-ring': 'pulse-ring 1.5s cubic-bezier(0.215,.61,.355,1) infinite',
+        },
+      }},
+    }
+  </script>
+  <style>
+    body { background: #f8fafc; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.06); }
+    .drop-zone.dragover { border-color:#84cc16; background:rgba(132,204,22,.08); }
+    pre { white-space:pre-wrap; word-break:break-word; }
+    ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:#84cc16; border-radius:2px; }
+  </style>
+</head>
+<body class="min-h-screen font-sans">
+
+  <!-- Navbar -->
+  <nav class="bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2 mr-auto hover:opacity-80 transition-opacity">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+        </svg>
+      </div>
+      <span class="font-bold text-slate-900 text-sm">AI<span class="text-lime-600">Transcriber</span></span>
+    </a>
+    <a href="/accounts/login/" class="text-xs text-slate-500 hover:text-lime-700 transition-colors font-medium">Sign In</a>
+    <a href="/accounts/register/" class="text-xs text-white font-semibold px-4 py-1.5 rounded-lg bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 transition-all shadow-sm">Register</a>
+  </nav>
+
+  <div class="w-full max-w-xl mx-auto px-4 py-10 space-y-6">
+
+    <!-- Header -->
+    <div class="text-center space-y-2 animate-fade-up">
+      <div class="inline-flex items-center gap-2 bg-lime-100 border border-lime-200 text-lime-700 rounded-full px-4 py-1.5 text-xs font-semibold mb-2">
+        <span class="w-2 h-2 rounded-full bg-lime-500 inline-block"></span>
+        Free Trial — No Registration Required
+      </div>
+      <h1 class="text-3xl font-bold text-slate-900">Try AI Transcriber</h1>
+      <p class="text-slate-500 text-sm">Upload a small audio/video file and see the magic — one free trial per device.</p>
+    </div>
+
+    <!-- Limits info card -->
+    <div id="limitsCard" class="bg-lime-50 border border-lime-200 rounded-2xl p-4 flex gap-3 items-start">
+      <div class="w-8 h-8 rounded-lg bg-lime-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <svg class="w-4 h-4 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div class="text-sm">
+        <p class="text-slate-700 font-medium">Trial limits</p>
+        <ul class="text-slate-500 mt-1 space-y-0.5 text-xs list-disc list-inside">
+          <li>1 upload per IP address</li>
+          <li>Max file size: <strong class="text-slate-700">{{ max_mb }} MB</strong></li>
+          <li>All supported formats (MP4, MP3, WAV, M4A, MOV, WebM, OGG, FLAC…)</li>
+        </ul>
+      </div>
+    </div>
+
+    {% if already_used %}
+    <!-- Already used -->
+    <div class="card p-8 text-center space-y-5 animate-fade-up">
+      <div class="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto">
+        <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-slate-900 font-bold text-xl">Free trial already used</h2>
+        <p class="text-slate-500 text-sm mt-2">Your device has already completed a free trial upload. To continue using AI Transcriber, you need a full account.</p>
+      </div>
+      <div class="space-y-3">
+        <p class="text-slate-600 text-sm font-medium">How to get full access:</p>
+        <div class="bg-slate-50 rounded-xl p-4 space-y-2 text-sm text-left border border-slate-200">
+          <div class="flex items-start gap-2">
+            <span class="text-lime-600 font-bold text-xs mt-0.5">1.</span>
+            <p class="text-slate-600"><a href="/accounts/register/" class="text-lime-600 underline underline-offset-2 font-medium">Create a free account</a> — takes under 1 minute.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-lime-600 font-bold text-xs mt-0.5">2.</span>
+            <p class="text-slate-600">Contact the admin via WhatsApp to get your account approved and a package assigned.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-lime-600 font-bold text-xs mt-0.5">3.</span>
+            <p class="text-slate-600">Once approved, log in and start transcribing with your full package quota.</p>
+          </div>
+        </div>
+        <a href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer"
+           class="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl font-semibold text-white text-sm bg-[#25D366] hover:bg-[#1fb355] transition-colors shadow-lg shadow-green-300/30">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.555 4.122 1.524 5.857L0 24l6.335-1.507A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.812 9.812 0 01-5.004-1.366l-.36-.213-3.76.895.953-3.67-.234-.375A9.815 9.815 0 012.182 12c0-5.423 4.395-9.818 9.818-9.818S21.818 6.577 21.818 12 17.423 21.818 12 21.818z"/>
+          </svg>
+          Contact Admin — {{ whatsapp }}
+        </a>
+        <a href="/accounts/register/"
+           class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-medium text-slate-700 text-sm border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+          Register for a free account
+        </a>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Upload form -->
+    <div id="uploadCard" class="card p-8 animate-fade-up">
+      <div id="dropZone"
+           class="drop-zone border-2 border-dashed border-lime-300 rounded-2xl p-10 text-center cursor-pointer hover:border-lime-500 hover:bg-lime-50/60 transition-all duration-300 group"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <input type="file" id="fileInput" class="hidden"
+               accept=".mp4,.mp3,.wav,.m4a,.mov,.mkv,.avi,.webm,.ogg,.flac,.aac,.mpeg,.mpga"
+               onchange="handleFileSelect(event)" />
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-14 h-14 rounded-xl bg-lime-100 flex items-center justify-center group-hover:bg-lime-200 transition-colors">
+            <svg class="w-7 h-7 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-slate-700 font-medium">Drag &amp; drop or <span class="text-lime-600 underline underline-offset-2">browse</span></p>
+            <p class="text-slate-400 text-xs mt-1">Max {{ max_mb }} MB · MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="filePill" class="hidden mt-4 flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-3">
+        <span id="fileName" class="text-slate-800 text-sm font-medium truncate flex-1"></span>
+        <span id="fileSize" class="text-slate-500 text-xs flex-shrink-0"></span>
+        <button onclick="clearFile()" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <button id="submitBtn" onclick="doTrial()" disabled
+              class="mt-5 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 shadow-lg shadow-lime-300/30 hover:from-lime-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Transcribe &amp; Generate Prompt (Free Trial)
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingCard" class="hidden card p-8 text-center animate-fade-up">
+      <div class="relative inline-flex items-center justify-center">
+        <div class="animate-pulse-ring absolute w-16 h-16 rounded-full bg-lime-400/30"></div>
+        <div class="w-16 h-16 rounded-full border-4 border-lime-200 border-t-lime-500 animate-spin"></div>
+      </div>
+      <p id="loadingText" class="text-slate-900 font-semibold mt-5 text-lg">Uploading file…</p>
+      <p class="text-slate-500 text-sm mt-1">This may take a moment</p>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsCard" class="hidden space-y-4 animate-fade-up">
+
+      <div class="bg-lime-50 border border-lime-200 rounded-2xl p-4 text-center">
+        <p class="text-lime-700 font-semibold text-sm">✓ Free trial complete! Your results are below.</p>
+        <p class="text-slate-500 text-xs mt-1">Want unlimited transcriptions? <a href="/accounts/register/" class="text-lime-600 underline underline-offset-1 font-medium">Create an account</a> and contact admin.</p>
+      </div>
+
+      <!-- Cost badge -->
+      <div class="card p-4 grid grid-cols-3 gap-3 text-center border-lime-200 bg-lime-50">
+        <div>
+          <p class="text-slate-500 text-xs mb-1">Transcription</p>
+          <p id="costTranscription" class="text-lime-600 font-bold text-sm">$0.000000</p>
+        </div>
+        <div class="border-x border-slate-200">
+          <p class="text-slate-500 text-xs mb-1">Prompt Gen</p>
+          <p id="costPrompt" class="text-emerald-600 font-bold text-sm">$0.000000</p>
+        </div>
+        <div>
+          <p class="text-slate-500 text-xs mb-1">This run</p>
+          <p id="costTotal" class="text-slate-900 font-bold text-sm">$0.000000</p>
+        </div>
+      </div>
+
+      <!-- Transcript -->
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-slate-900 font-semibold text-sm flex items-center gap-2">
+            <div class="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            Transcript
+          </h2>
+          <button onclick="copyText('transcriptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors">Copy</button>
+        </div>
+        <pre id="transcriptText" class="text-slate-600 text-sm leading-relaxed max-h-48 overflow-y-auto bg-slate-50 rounded-xl p-3"></pre>
+      </div>
+
+      <!-- AI Prompt -->
+      <div class="card p-6 border-lime-200">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-slate-900 font-semibold text-sm flex items-center gap-2">
+            <div class="w-6 h-6 rounded-md bg-lime-100 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            AI Prompt
+          </h2>
+          <button onclick="copyText('promptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors">Copy</button>
+        </div>
+        <pre id="promptText" class="text-slate-700 text-sm leading-relaxed max-h-48 overflow-y-auto bg-lime-50 rounded-xl p-3"></pre>
+        <button onclick="downloadPrompt()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 transition-all flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download prompt.txt
+        </button>
+      </div>
+
+      <!-- CTA after results -->
+      <div class="card p-6 text-center space-y-4">
+        <p class="text-slate-700 font-semibold">Want unlimited transcriptions?</p>
+        <p class="text-slate-500 text-sm">Register for a free account, then contact the admin to get approved and a package assigned.</p>
+        <div class="flex flex-col gap-2">
+          <a href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer"
+             class="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1fb355] transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.555 4.122 1.524 5.857L0 24l6.335-1.507A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.812 9.812 0 01-5.004-1.366l-.36-.213-3.76.895.953-3.67-.234-.375A9.815 9.815 0 012.182 12c0-5.423 4.395-9.818 9.818-9.818S21.818 6.577 21.818 12 17.423 21.818 12 21.818z"/></svg>
+            WhatsApp Admin — {{ whatsapp }}
+          </a>
+          <a href="/accounts/register/" class="py-3 rounded-xl text-sm font-medium text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+            Create Free Account
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorCard" class="hidden card p-6 border-red-200 bg-red-50 animate-fade-up">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-red-700 font-medium text-sm">Something went wrong</p>
+          <p id="errorText" class="text-slate-600 text-xs mt-1"></p>
+        </div>
+      </div>
+      <button onclick="resetForm()" class="mt-4 text-sm text-slate-500 hover:text-slate-900">Try again →</button>
+    </div>
+
+    {% endif %}
+
+    <!-- WhatsApp contact footer -->
+    <div class="text-center pt-2">
+      <p class="text-slate-400 text-xs">For access approval or account requests, contact admin:</p>
+      <a href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center gap-1.5 text-[#25D366] hover:text-[#1fb355] font-medium text-sm mt-1 transition-colors">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.555 4.122 1.524 5.857L0 24l6.335-1.507A11.946 11.946 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.812 9.812 0 01-5.004-1.366l-.36-.213-3.76.895.953-3.67-.234-.375A9.815 9.815 0 012.182 12c0-5.423 4.395-9.818 9.818-9.818S21.818 6.577 21.818 12 17.423 21.818 12 21.818z"/></svg>
+        WhatsApp {{ whatsapp }}
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    const TRIAL_URL = "{% url 'transcriber:trial_transcribe' %}";
+    const CSRF = "{{ csrf_token }}";
+    const MAX_MB = {{ max_mb }};
+
+    let selectedFile = null;
+
+    function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+    function handleDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
+    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); const f=e.dataTransfer.files[0]; if(f) setFile(f); }
+    function handleFileSelect(e){ const f=e.target.files[0]; if(f) setFile(f); }
+
+    function setFile(file) {
+      const sizeMb = file.size / (1024 * 1024);
+      if (sizeMb > MAX_MB) {
+        alert(`File is too large (${sizeMb.toFixed(1)} MB). Trial limit is ${MAX_MB} MB.`);
+        return;
+      }
+      selectedFile = file;
+      hide('dropZone');
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileSize').textContent = formatBytes(file.size);
+      show('filePill');
+      document.getElementById('submitBtn').disabled = false;
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      show('dropZone'); hide('filePill');
+      document.getElementById('fileInput').value = '';
+      document.getElementById('submitBtn').disabled = true;
+    }
+
+    function resetForm() {
+      hide('errorCard'); hide('resultsCard'); clearFile();
+    }
+
+    async function doTrial() {
+      if (!selectedFile) return;
+      hide('errorCard'); hide('resultsCard');
+      show('loadingCard');
+      document.getElementById('loadingText').textContent = 'Uploading file…';
+
+      const timers = [
+        setTimeout(() => setText('loadingText', 'Transcribing audio…'), 3000),
+        setTimeout(() => setText('loadingText', 'Building AI prompt…'), 8000),
+      ];
+
+      const form = new FormData();
+      form.append('file', selectedFile);
+
+      try {
+        const res  = await fetch(TRIAL_URL, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF },
+          body: form,
+        });
+        const data = await res.json();
+        timers.forEach(clearTimeout);
+        hide('loadingCard');
+
+        if (!res.ok || data.error) {
+          document.getElementById('errorText').textContent = data.error || 'Unexpected error.';
+          show('errorCard'); return;
+        }
+
+        const c = data.cost;
+        document.getElementById('costTranscription').textContent = '$' + c.transcription_usd.toFixed(6);
+        document.getElementById('costPrompt').textContent        = '$' + c.prompt_usd.toFixed(6);
+        document.getElementById('costTotal').textContent         = '$' + c.total_usd.toFixed(6);
+        document.getElementById('transcriptText').textContent    = data.transcript;
+        document.getElementById('promptText').textContent        = data.prompt;
+        hide('uploadCard');
+        hide('limitsCard');
+        selectedFile = null;
+        show('resultsCard');
+      } catch (err) {
+        timers.forEach(clearTimeout);
+        hide('loadingCard');
+        document.getElementById('errorText').textContent = err.message;
+        show('errorCard');
+      }
+    }
+
+    function downloadPrompt() {
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([document.getElementById('promptText').textContent],{type:'text/plain'})),
+        download: 'prompt.txt',
+      });
+      a.click();
+    }
+
+    async function copyText(id, btn) {
+      await navigator.clipboard.writeText(document.getElementById(id).textContent);
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('text-lime-600');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('text-lime-600'); }, 1500);
+    }
+
+    function setText(id, text) { const el = document.getElementById(id); if(el) el.textContent = text; }
+    function formatBytes(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
+    function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+    function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+  </script>
+</body>
+</html>

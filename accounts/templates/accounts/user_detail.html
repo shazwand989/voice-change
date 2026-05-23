@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username }} — Admin{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5 animate-fade-up">
+
+  <div class="flex items-center gap-3">
+    <a href="{% url 'accounts:user_list' %}" class="text-slate-500 hover:text-lime-700 transition-colors text-sm font-medium">← Users</a>
+    <span class="text-slate-300">/</span>
+    <h1 class="text-xl font-bold text-slate-900">{{ profile_user.username }}</h1>
+    <span class="text-xs px-2.5 py-1 rounded-full font-medium
+      {% if profile_user.status == 'approved' %}bg-lime-100 text-lime-700
+      {% elif profile_user.status == 'pending' %}bg-yellow-100 text-yellow-700
+      {% elif profile_user.status == 'rejected' %}bg-red-100 text-red-700
+      {% else %}bg-slate-100 text-slate-600{% endif %}">
+      {{ profile_user.get_status_display }}
+    </span>
+  </div>
+
+  <!-- Profile info -->
+  <div class="card p-6 grid grid-cols-2 gap-4 text-sm">
+    <div><p class="text-slate-500 text-xs mb-1">Email</p><p class="text-slate-900">{{ profile_user.email|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Full name</p><p class="text-slate-900">{{ profile_user.get_full_name|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Phone</p><p class="text-slate-900">{{ profile_user.phone|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Company</p><p class="text-slate-900">{{ profile_user.company|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Joined</p><p class="text-slate-900">{{ profile_user.date_joined|date:"M d, Y H:i" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Last login</p><p class="text-slate-900">{{ profile_user.last_login|date:"M d, Y H:i"|default:"Never" }}</p></div>
+  </div>
+
+  <!-- Status actions -->
+  <div class="card p-6">
+    <h2 class="text-slate-900 font-semibold mb-4">Account Actions</h2>
+    <div class="flex flex-wrap gap-2">
+      {% if profile_user.status != 'approved' %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="approve">
+        <button class="px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">✓ Approve</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status == 'approved' %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="deactivate">
+        <button class="px-4 py-2 rounded-xl bg-slate-500 hover:bg-slate-400 text-white text-sm font-medium transition-colors">⊘ Deactivate</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status == 'deactivated' %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="reactivate">
+        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors">↺ Reactivate</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status not in 'rejected,deactivated' %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="reject">
+        <button class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition-colors">✕ Reject</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Package assignment -->
+  <div class="card p-6">
+    <h2 class="text-slate-900 font-semibold mb-4">Package Assignment</h2>
+    {% if cp %}
+    <div class="card-sm rounded-xl p-4 mb-4">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <p class="text-slate-900 font-medium">{{ cp.package.name }}</p>
+          <p class="text-slate-500 text-xs mt-0.5">Used: {{ cp.transcriptions_used }} / {% if cp.package.max_transcriptions == -1 %}∞{% else %}{{ cp.package.max_transcriptions }}{% endif %} transcriptions</p>
+        </div>
+        <span class="text-xs text-lime-600 font-medium">Active</span>
+      </div>
+    </div>
+    {% endif %}
+    {% if packages %}
+    <form method="post" class="flex gap-3 flex-wrap items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="assign_package">
+      <div class="flex-1 min-w-48">
+        <label class="block text-xs text-slate-600 font-semibold mb-1.5">Assign package{% if cp %} (resets usage){% endif %}</label>
+        <select name="package_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors">
+          {% for pkg in packages %}
+          <option value="{{ pkg.id }}" {% if cp and cp.package.id == pkg.id %}selected{% endif %}>{{ pkg.name }} ({{ pkg.max_transcriptions|default:"∞" }} transcriptions)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-5 py-2.5 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">Assign</button>
+    </form>
+    {% else %}
+    <p class="text-slate-500 text-sm">No packages available. <a href="{% url 'packages:create' %}" class="text-lime-600 hover:text-lime-700 font-medium transition-colors">Create one →</a></p>
+    {% endif %}
+  </div>
+
+  <!-- Recent transcriptions -->
+  {% if transcriptions %}
+  <div>
+    <h2 class="text-slate-900 font-semibold mb-3">Recent Transcriptions</h2>
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-100 bg-slate-50">
+          <tr>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">File</th>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Date</th>
+            <th class="text-right text-xs text-slate-500 font-semibold px-5 py-3">Cost</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for t in transcriptions %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-5 py-3 text-slate-900 max-w-xs truncate">{{ t.filename }}</td>
+            <td class="px-5 py-3 text-slate-500">{{ t.created_at|date:"M d, Y H:i" }}</td>
+            <td class="px-5 py-3 text-lime-600 text-right font-medium">${{ t.total_cost_usd|floatformat:6 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

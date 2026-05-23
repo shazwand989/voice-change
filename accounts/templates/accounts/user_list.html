@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Users — Admin{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-5 animate-fade-up">
+
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold text-slate-900">Customer Accounts</h1>
+    <a href="{% url 'accounts:admin_dashboard' %}" class="text-xs text-slate-500 hover:text-lime-700 transition-colors font-medium">← Dashboard</a>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="card p-4 flex gap-3 flex-wrap items-end">
+    <div class="flex-1 min-w-48">
+      <label class="block text-xs text-slate-600 font-semibold mb-1">Search</label>
+      <input name="q" value="{{ search }}" type="text" placeholder="Username, email, company…"
+             class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-lime-500 transition-colors" />
+    </div>
+    <div>
+      <label class="block text-xs text-slate-600 font-semibold mb-1">Status</label>
+      <select name="status" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors">
+        <option value="">All</option>
+        {% for val, label in STATUS_CHOICES %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="px-5 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">Filter</button>
+    {% if search or status_filter %}<a href="{% url 'accounts:user_list' %}" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 text-sm transition-colors">Clear</a>{% endif %}
+  </form>
+
+  <!-- Table -->
+  <div class="card overflow-hidden">
+    {% if users %}
+    <table class="w-full text-sm">
+      <thead class="border-b border-slate-100 bg-slate-50">
+        <tr>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">User</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3 hidden md:table-cell">Company</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Status</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3 hidden md:table-cell">Package</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3 hidden md:table-cell">Joined</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for u in users %}
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-5 py-3">
+            <p class="text-slate-900 font-medium">{{ u.username }}</p>
+            <p class="text-slate-500 text-xs">{{ u.email }}</p>
+          </td>
+          <td class="px-5 py-3 text-slate-500 hidden md:table-cell">{{ u.company|default:"—" }}</td>
+          <td class="px-5 py-3">
+            <span class="text-xs px-2.5 py-1 rounded-full font-medium
+              {% if u.status == 'approved' %}bg-lime-100 text-lime-700
+              {% elif u.status == 'pending' %}bg-yellow-100 text-yellow-700
+              {% elif u.status == 'rejected' %}bg-red-100 text-red-700
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ u.get_status_display }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-slate-500 text-xs hidden md:table-cell">
+            {% if u.customer_package %}{{ u.customer_package.package.name }}{% else %}—{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-500 text-xs hidden md:table-cell">{{ u.date_joined|date:"M d, Y" }}</td>
+          <td class="px-5 py-3 text-right">
+            <a href="{% url 'accounts:user_detail' u.id %}" class="text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">Manage →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-10 text-center text-slate-400 text-sm">No users found.</div>
+    {% endif %}
+  </div>
+
+  <p class="text-slate-500 text-xs">{{ users|length }} result(s)</p>
+</div>
+{% endblock %}

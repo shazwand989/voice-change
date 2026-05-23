@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Packages — Admin{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-5 animate-fade-up">
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900">Service Packages</h1>
+    <a href="{% url 'packages:create' %}"
+       class="px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors shadow-sm">
+      + New Package
+    </a>
+  </div>
+
+  <div class="card overflow-hidden">
+    {% if packages %}
+    <table class="w-full text-sm">
+      <thead class="border-b border-slate-100 bg-slate-50">
+        <tr>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Name</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Transcriptions</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">File Limit</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Assigned To</th>
+          <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Status</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for pkg in packages %}
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-5 py-3">
+            <p class="text-slate-900 font-medium">{{ pkg.name }}</p>
+            {% if pkg.description %}<p class="text-slate-500 text-xs mt-0.5 truncate max-w-xs">{{ pkg.description }}</p>{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-600">
+            {% if pkg.max_transcriptions == -1 %}Unlimited{% else %}{{ pkg.max_transcriptions }}{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-600">
+            {% if pkg.max_file_size_mb == -1 %}Unlimited{% else %}{{ pkg.max_file_size_mb }} MB{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-600">{{ pkg.assignments.count }} user(s)</td>
+          <td class="px-5 py-3">
+            <span class="text-xs px-2.5 py-1 rounded-full font-medium {% if pkg.is_active %}bg-lime-100 text-lime-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+              {% if pkg.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-right flex items-center justify-end gap-3">
+            <a href="{% url 'packages:edit' pkg.id %}" class="text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">Edit</a>
+            <a href="{% url 'packages:delete' pkg.id %}" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-10 text-center text-slate-400 text-sm">
+      No packages yet.
+      <a href="{% url 'packages:create' %}" class="text-lime-600 hover:text-lime-700 font-medium transition-colors ml-1">Create the first one →</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
