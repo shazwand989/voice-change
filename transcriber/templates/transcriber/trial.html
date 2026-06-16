@@ -27,6 +27,13 @@
     .drop-zone.dragover { border-color:#84cc16; background:rgba(132,204,22,.08); }
     pre { white-space:pre-wrap; word-break:break-word; }
     ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:#84cc16; border-radius:2px; }
+    .mom-content h1 { font-size:1.125rem; font-weight:700; color:#0f172a; margin-top:0.75rem; margin-bottom:0.5rem; }
+    .mom-content h2 { font-size:1rem; font-weight:600; color:#1e293b; margin-top:0.75rem; margin-bottom:0.25rem; }
+    .mom-content ul { margin:0.25rem 0; padding-left:1.25rem; }
+    .mom-content li { color:#475569; }
+    .mom-content table { width:100%; border-collapse:collapse; margin:0.5rem 0; }
+    .mom-content th { background:#f3e8ff; color:#374151; font-size:0.75rem; font-weight:600; text-align:left; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
+    .mom-content td { font-size:0.75rem; color:#475569; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
   </style>
 </head>
 <body class="min-h-screen font-sans">
@@ -68,8 +75,8 @@
         <p class="text-slate-700 font-medium">Trial limits</p>
         <ul class="text-slate-500 mt-1 space-y-0.5 text-xs list-disc list-inside">
           <li>1 upload per IP address</li>
-          <li>Max file size: <strong class="text-slate-700">{{ max_mb }} MB</strong></li>
-          <li>All supported formats (MP4, MP3, WAV, M4A, MOV, WebM, OGG, FLAC…)</li>
+          <li>Max file size: <strong class="text-slate-700">{{ max_mb }} MB</strong> (per file)</li>
+          <li>Multi-file upload supported</li>
         </ul>
       </div>
     </div>
@@ -124,7 +131,7 @@
            class="drop-zone border-2 border-dashed border-lime-300 rounded-2xl p-10 text-center cursor-pointer hover:border-lime-500 hover:bg-lime-50/60 transition-all duration-300 group"
            onclick="document.getElementById('fileInput').click()"
            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-        <input type="file" id="fileInput" class="hidden"
+        <input type="file" id="fileInput" class="hidden" multiple
                accept=".mp4,.mp3,.wav,.m4a,.mov,.mkv,.avi,.webm,.ogg,.flac,.aac,.mpeg,.mpga"
                onchange="handleFileSelect(event)" />
         <div class="flex flex-col items-center gap-3">
@@ -135,23 +142,17 @@
           </div>
           <div>
             <p class="text-slate-700 font-medium">Drag &amp; drop or <span class="text-lime-600 underline underline-offset-2">browse</span></p>
-            <p class="text-slate-400 text-xs mt-1">Max {{ max_mb }} MB · MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
+            <p class="text-slate-400 text-xs mt-1">Multi-file · Max {{ max_mb }} MB each · MP4 · MP3 · WAV · M4A · MOV · WebM</p>
           </div>
         </div>
       </div>
 
-      <div id="filePill" class="hidden mt-4 flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-3">
-        <span id="fileName" class="text-slate-800 text-sm font-medium truncate flex-1"></span>
-        <span id="fileSize" class="text-slate-500 text-xs flex-shrink-0"></span>
-        <button onclick="clearFile()" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
+      <div id="fileList" class="hidden mt-4 space-y-2"></div>
 
       <button id="submitBtn" onclick="doTrial()" disabled
               class="mt-5 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 shadow-lg shadow-lime-300/30 hover:from-lime-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        Transcribe &amp; Generate Prompt (Free Trial)
+        <span id="submitLabel">Transcribe, Prompt &amp; MOM (Free Trial)</span>
       </button>
     </div>
 
@@ -174,14 +175,18 @@
       </div>
 
       <!-- Cost badge -->
-      <div class="card p-4 grid grid-cols-3 gap-3 text-center border-lime-200 bg-lime-50">
+      <div class="card p-4 grid grid-cols-4 gap-3 text-center border-lime-200 bg-lime-50">
         <div>
           <p class="text-slate-500 text-xs mb-1">Transcription</p>
           <p id="costTranscription" class="text-lime-600 font-bold text-sm">$0.000000</p>
         </div>
         <div class="border-x border-slate-200">
-          <p class="text-slate-500 text-xs mb-1">Prompt Gen</p>
+          <p class="text-slate-500 text-xs mb-1">Prompt</p>
           <p id="costPrompt" class="text-emerald-600 font-bold text-sm">$0.000000</p>
+        </div>
+        <div class="border-r border-slate-200">
+          <p class="text-slate-500 text-xs mb-1">MOM</p>
+          <p id="costMom" class="text-purple-600 font-bold text-sm">$0.000000</p>
         </div>
         <div>
           <p class="text-slate-500 text-xs mb-1">This run</p>
@@ -218,6 +223,24 @@
         <button onclick="downloadPrompt()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 transition-all flex items-center justify-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Download prompt.txt
+        </button>
+      </div>
+
+      <!-- MOM Report -->
+      <div class="card p-6 border-purple-200">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-slate-900 font-semibold text-sm flex items-center gap-2">
+            <div class="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            Minutes of Meeting (MOM)
+          </h2>
+          <button onclick="copyText('momText',this)" class="text-xs text-slate-400 hover:text-purple-600 transition-colors">Copy</button>
+        </div>
+        <div id="momText" class="text-slate-600 text-sm leading-relaxed max-h-96 overflow-y-auto bg-purple-50 rounded-xl p-4 mom-content"></div>
+        <button onclick="downloadMom()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 transition-all flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download MOM.md
         </button>
       </div>
 
@@ -271,32 +294,55 @@
     const CSRF = "{{ csrf_token }}";
     const MAX_MB = {{ max_mb }};
 
-    let selectedFile = null;
+    let selectedFiles = [];
 
     function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
     function handleDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
-    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); const f=e.dataTransfer.files[0]; if(f) setFile(f); }
-    function handleFileSelect(e){ const f=e.target.files[0]; if(f) setFile(f); }
+    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); addFiles(Array.from(e.dataTransfer.files)); }
+    function handleFileSelect(e){ addFiles(Array.from(e.target.files)); }
 
-    function setFile(file) {
-      const sizeMb = file.size / (1024 * 1024);
-      if (sizeMb > MAX_MB) {
-        alert(`File is too large (${sizeMb.toFixed(1)} MB). Trial limit is ${MAX_MB} MB.`);
+    function addFiles(files) {
+      for (const f of files) {
+        const sizeMb = f.size / (1024 * 1024);
+        if (sizeMb > MAX_MB) {
+          alert(`File "${f.name}" is too large (${sizeMb.toFixed(1)} MB). Trial limit is ${MAX_MB} MB per file.`);
+          continue;
+        }
+        if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
+          selectedFiles.push(f);
+        }
+      }
+      renderFileList();
+    }
+
+    function removeFile(idx) { selectedFiles.splice(idx, 1); renderFileList(); }
+
+    function renderFileList() {
+      const list = document.getElementById('fileList');
+      if (!selectedFiles.length) {
+        list.classList.add('hidden');
+        list.innerHTML = '';
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitLabel').textContent = 'Transcribe, Prompt & MOM (Free Trial)';
         return;
       }
-      selectedFile = file;
-      hide('dropZone');
-      document.getElementById('fileName').textContent = file.name;
-      document.getElementById('fileSize').textContent = formatBytes(file.size);
-      show('filePill');
+      list.classList.remove('hidden');
       document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitLabel').textContent = `Transcribe ${selectedFiles.length} file(s), Prompt & MOM`;
+      list.innerHTML = selectedFiles.map((f, i) => `
+        <div class="flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-2">
+          <span class="text-slate-800 text-sm font-medium truncate flex-1">${esc(f.name)}</span>
+          <span class="text-slate-500 text-xs flex-shrink-0">${formatBytes(f.size)}</span>
+          <button onclick="removeFile(${i})" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>`).join('');
     }
 
     function clearFile() {
-      selectedFile = null;
-      show('dropZone'); hide('filePill');
+      selectedFiles = [];
+      renderFileList();
       document.getElementById('fileInput').value = '';
-      document.getElementById('submitBtn').disabled = true;
     }
 
     function resetForm() {
@@ -304,18 +350,19 @@
     }
 
     async function doTrial() {
-      if (!selectedFile) return;
+      if (!selectedFiles.length) return;
       hide('errorCard'); hide('resultsCard');
       show('loadingCard');
-      document.getElementById('loadingText').textContent = 'Uploading file…';
+      document.getElementById('loadingText').textContent = 'Uploading files…';
 
       const timers = [
         setTimeout(() => setText('loadingText', 'Transcribing audio…'), 3000),
-        setTimeout(() => setText('loadingText', 'Building AI prompt…'), 8000),
+        setTimeout(() => setText('loadingText', 'Building AI prompt…'), 15000),
+        setTimeout(() => setText('loadingText', 'Generating MOM report…'), 25000),
       ];
 
       const form = new FormData();
-      form.append('file', selectedFile);
+      selectedFiles.forEach(f => form.append('files', f));
 
       try {
         const res  = await fetch(TRIAL_URL, {
@@ -335,12 +382,14 @@
         const c = data.cost;
         document.getElementById('costTranscription').textContent = '$' + c.transcription_usd.toFixed(6);
         document.getElementById('costPrompt').textContent        = '$' + c.prompt_usd.toFixed(6);
+        document.getElementById('costMom').textContent           = '$' + (c.mom_usd||0).toFixed(6);
         document.getElementById('costTotal').textContent         = '$' + c.total_usd.toFixed(6);
         document.getElementById('transcriptText').textContent    = data.transcript;
         document.getElementById('promptText').textContent        = data.prompt;
+        document.getElementById('momText').innerHTML             = data.mom ? markdownToHtml(data.mom) : '';
         hide('uploadCard');
         hide('limitsCard');
-        selectedFile = null;
+        selectedFiles = [];
         show('resultsCard');
       } catch (err) {
         timers.forEach(clearTimeout);
@@ -350,10 +399,46 @@
       }
     }
 
+    function markdownToHtml(md) {
+      let html = esc(md);
+      html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-slate-900 mt-3 mb-2">$1</h1>');
+      html = html.replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-slate-800 mt-3 mb-1">$1</h2>');
+      html = html.replace(/^\*\*(.+?)\*\*/gm, '<strong class="text-slate-900">$1</strong>');
+      html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-600">$1</li>');
+      html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-600">$1</li>');
+      html = html.replace(/^---$/gm, '<hr class="my-3 border-slate-200">');
+      html = html.replace(/\|(.+)\|/g, function(m) {
+        if (m.indexOf('---') >= 0) return m;
+        const cells = m.split('|').filter(c => c.trim());
+        return '<tr>' + cells.map(c => {
+          const isHeader = /\*\*/.test(c);
+          const tag = isHeader ? 'th' : 'td';
+          const cls = isHeader ? 'px-3 py-1 text-left text-xs font-semibold text-slate-700 bg-purple-100' : 'px-3 py-1 text-left text-xs text-slate-600';
+          return `<${tag} class="${cls}">${c.trim().replace(/\*\*/g,'')}</${tag}>`;
+        }).join('') + '</tr>';
+      });
+      html = html.replace(/(<tr>.*?<\/tr>)/gs, function(m) {
+        return '<table class="w-full border-collapse border border-purple-200 rounded-lg overflow-hidden my-2"><tbody>' + m + '</tbody></table>';
+      });
+      html = html.replace(/<\/li>\s*<li/g, '</li><li');
+      html = html.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul class="my-1">$1</ul>');
+      html = html.replace(/\n\n/g, '<br><br>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
     function downloadPrompt() {
       const a = Object.assign(document.createElement('a'), {
         href: URL.createObjectURL(new Blob([document.getElementById('promptText').textContent],{type:'text/plain'})),
         download: 'prompt.txt',
+      });
+      a.click();
+    }
+
+    function downloadMom() {
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([document.getElementById('momText').textContent || ''],{type:'text/markdown'})),
+        download: 'MOM_Report.md',
       });
       a.click();
     }
@@ -368,8 +453,9 @@
 
     function setText(id, text) { const el = document.getElementById(id); if(el) el.textContent = text; }
     function formatBytes(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
-    function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
-    function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function show(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
+    function hide(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
   </script>
 </body>
 </html>

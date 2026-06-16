@@ -30,6 +30,15 @@
     .card-sm { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; }
     .drop-zone.dragover { border-color:#84cc16; background:rgba(132,204,22,.08); }
     pre { white-space:pre-wrap; word-break:break-word; }
+    .mom-content h1 { font-size:1.125rem; font-weight:700; color:#0f172a; margin-top:0.75rem; margin-bottom:0.5rem; }
+    .mom-content h2 { font-size:1rem; font-weight:600; color:#1e293b; margin-top:0.75rem; margin-bottom:0.25rem; }
+    .mom-content h3 { font-size:0.875rem; font-weight:600; color:#334155; margin-top:0.5rem; margin-bottom:0.25rem; }
+    .mom-content ul { margin:0.25rem 0; padding-left:1.25rem; }
+    .mom-content li { color:#475569; }
+    .mom-content table { width:100%; border-collapse:collapse; margin:0.5rem 0; }
+    .mom-content th { background:#f3e8ff; color:#374151; font-size:0.75rem; font-weight:600; text-align:left; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
+    .mom-content td { font-size:0.75rem; color:#475569; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
+    .mom-content hr { margin:0.75rem 0; border-color:#e2e8f0; }
     ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:#84cc16; border-radius:2px; }
   </style>
 </head>
@@ -101,7 +110,7 @@
              class="drop-zone border-2 border-dashed border-lime-300 rounded-2xl p-10 text-center cursor-pointer hover:border-lime-500 hover:bg-lime-50/60 transition-all duration-300 group"
              onclick="document.getElementById('fileInput').click()"
              ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-          <input type="file" id="fileInput" class="hidden"
+          <input type="file" id="fileInput" class="hidden" multiple
                  accept=".mp4,.mp3,.wav,.m4a,.mov,.mkv,.avi,.webm,.ogg,.flac,.aac,.mpeg,.mpga"
                  onchange="handleFileSelect(event)" />
           <div class="flex flex-col items-center gap-3">
@@ -112,23 +121,17 @@
             </div>
             <div>
               <p class="text-slate-700 font-medium">Drag &amp; drop or <span class="text-lime-600 underline underline-offset-2">browse</span></p>
-              <p class="text-slate-400 text-xs mt-1">MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
+              <p class="text-slate-400 text-xs mt-1">Multi-file · MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
             </div>
           </div>
         </div>
 
-        <div id="filePill" class="hidden mt-4 flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-3">
-          <span id="fileName" class="text-slate-800 text-sm font-medium truncate flex-1"></span>
-          <span id="fileSize" class="text-slate-500 text-xs flex-shrink-0"></span>
-          <button onclick="clearFile()" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
+        <div id="fileList" class="hidden mt-4 space-y-2"></div>
 
         <button id="submitBtn" onclick="doTranscribe()" disabled
                 class="mt-5 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 shadow-lg shadow-lime-300/30 hover:from-lime-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 text-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          Transcribe &amp; Generate Prompt
+          <span id="submitLabel">Transcribe, Prompt &amp; MOM</span>
         </button>
       </div>
 
@@ -146,16 +149,21 @@
       <div id="resultsCard" class="hidden space-y-4 mt-5 animate-fade-up">
 
         <!-- Cost badge -->
-        <div class="card p-4 grid grid-cols-3 gap-3 text-center border-lime-200 bg-lime-50">
+        <div class="card p-4 grid grid-cols-4 gap-3 text-center border-lime-200 bg-lime-50">
           <div>
             <p class="text-slate-500 text-xs mb-1">Transcription</p>
             <p id="costTranscription" class="text-lime-600 font-bold text-sm">$0.000000</p>
             <p id="tokTranscription"  class="text-slate-400 text-xs mt-0.5"></p>
           </div>
           <div class="border-x border-slate-200">
-            <p class="text-slate-500 text-xs mb-1">Prompt Gen</p>
+            <p class="text-slate-500 text-xs mb-1">Prompt</p>
             <p id="costPrompt" class="text-emerald-600 font-bold text-sm">$0.000000</p>
             <p id="tokPrompt"  class="text-slate-400 text-xs mt-0.5"></p>
+          </div>
+          <div class="border-r border-slate-200">
+            <p class="text-slate-500 text-xs mb-1">MOM</p>
+            <p id="costMom" class="text-purple-600 font-bold text-sm">$0.000000</p>
+            <p id="tokMom"  class="text-slate-400 text-xs mt-0.5"></p>
           </div>
           <div>
             <p class="text-slate-500 text-xs mb-1">This run</p>
@@ -199,6 +207,27 @@
           <button onclick="downloadPrompt()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/20 transition-all duration-300 flex items-center justify-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download prompt.txt
+          </button>
+        </div>
+
+        <!-- MOM Report -->
+        <div id="momCard" class="card p-6 border-purple-200">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
+                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <h2 class="text-slate-900 font-semibold text-sm">Minutes of Meeting (MOM)</h2>
+            </div>
+            <button onclick="copyText('momText',this)" class="text-xs text-slate-400 hover:text-purple-600 transition-colors flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              Copy
+            </button>
+          </div>
+          <div id="momText" class="text-slate-600 text-sm leading-relaxed max-h-96 overflow-y-auto bg-purple-50 rounded-xl p-4 mom-content"></div>
+          <button onclick="downloadMom()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 shadow-lg shadow-purple-300/20 transition-all duration-300 flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download MOM.md
           </button>
         </div>
 
@@ -247,7 +276,7 @@
     };
     const CSRF = "{{ csrf_token }}";
 
-    let selectedFile = null;
+    let selectedFiles = [];
 
     function switchTab(tab) {
       const isUpload = tab === 'upload';
@@ -298,10 +327,10 @@
             </button>
           </div>
         </div>
-        <div class="flex gap-4 mt-3 text-xs text-slate-400">
+        <div class="flex gap-4 mt-3 text-xs text-slate-400 flex-wrap">
           <span>Transcription: <span class="text-lime-600">$${item.transcription_cost_usd.toFixed(6)}</span></span>
           <span>Prompt: <span class="text-emerald-600">$${item.prompt_cost_usd.toFixed(6)}</span></span>
-          <span>Tokens in: <span class="text-slate-600">${(item.transcription_in_tokens + item.prompt_in_tokens).toLocaleString()}</span></span>
+          <span>MOM: <span class="text-purple-600">$${(item.mom_cost_usd||0).toFixed(6)}</span></span>
         </div>
         <div class="detail hidden mt-4 space-y-3">
           <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
@@ -312,6 +341,10 @@
             <p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">AI Prompt</p>
             <pre class="text-slate-700 text-xs leading-relaxed max-h-36 overflow-y-auto">${esc(item.ai_prompt)}</pre>
           </div>
+          ${item.mom_report ? `<div class="bg-purple-50 rounded-xl p-4 border border-purple-200">
+            <p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">MOM Report</p>
+            <div class="text-slate-600 text-xs leading-relaxed max-h-36 overflow-y-auto mom-content">${escapeHtml(item.mom_report)}</div>
+          </div>` : ''}
           <div class="flex gap-2">
             <button onclick="copyRaw('${btoa(unescape(encodeURIComponent(item.transcript)))}')" class="flex-1 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors">Copy transcript</button>
             <button onclick="copyRaw('${btoa(unescape(encodeURIComponent(item.ai_prompt)))}')"  class="flex-1 py-2 rounded-lg text-xs text-lime-700 hover:text-lime-900 bg-lime-100 hover:bg-lime-200 transition-colors">Copy prompt</button>
@@ -328,35 +361,63 @@
 
     function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
     function handleDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
-    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); const f=e.dataTransfer.files[0]; if(f) setFile(f); }
-    function handleFileSelect(e){ const f=e.target.files[0]; if(f) setFile(f); }
+    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); addFiles(Array.from(e.dataTransfer.files)); }
+    function handleFileSelect(e){ addFiles(Array.from(e.target.files)); }
 
-    function setFile(file) {
-      selectedFile = file;
-      hide('dropZone');
-      document.getElementById('fileName').textContent = file.name;
-      document.getElementById('fileSize').textContent = formatBytes(file.size);
-      show('filePill');
-      document.getElementById('submitBtn').disabled = false;
+    function addFiles(files) {
+      for (const f of files) {
+        if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
+          selectedFiles.push(f);
+        }
+      }
+      renderFileList();
     }
+
+    function removeFile(idx) {
+      selectedFiles.splice(idx, 1);
+      renderFileList();
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('fileList');
+      if (!selectedFiles.length) {
+        list.classList.add('hidden');
+        list.innerHTML = '';
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitLabel').textContent = 'Transcribe, Prompt & MOM';
+        return;
+      }
+      list.classList.remove('hidden');
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitLabel').textContent = `Transcribe ${selectedFiles.length} file(s), Prompt & MOM`;
+      list.innerHTML = selectedFiles.map((f, i) => `
+        <div class="flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-2">
+          <span class="text-slate-800 text-sm font-medium truncate flex-1">${esc(f.name)}</span>
+          <span class="text-slate-500 text-xs flex-shrink-0">${formatBytes(f.size)}</span>
+          <button onclick="removeFile(${i})" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>`).join('');
+    }
+
     function clearFile() {
-      selectedFile = null;
-      show('dropZone'); hide('filePill');
+      selectedFiles = [];
+      renderFileList();
       document.getElementById('fileInput').value = '';
-      document.getElementById('submitBtn').disabled = true;
     }
 
     async function doTranscribe() {
-      if (!selectedFile) return;
+      if (!selectedFiles.length) return;
       show('loadingCard'); hide('resultsCard'); hide('errorCard');
-      document.getElementById('loadingText').textContent = 'Uploading file…';
+      document.getElementById('loadingText').textContent = 'Uploading files…';
 
       const form = new FormData();
-      form.append('file', selectedFile);
+      selectedFiles.forEach(f => form.append('files', f));
 
       const timers = [
         setTimeout(() => setLoadingText('Transcribing audio…'),  3000),
-        setTimeout(() => setLoadingText('Building AI prompt…'),  8000),
+        setTimeout(() => setLoadingText('Building AI prompt…'),  15000),
+        setTimeout(() => setLoadingText('Generating MOM report…'), 25000),
       ];
       function setLoadingText(t) {
         if (!document.getElementById('loadingCard').classList.contains('hidden'))
@@ -381,11 +442,14 @@
         const c = data.cost;
         document.getElementById('costTranscription').textContent = '$' + c.transcription_usd.toFixed(6);
         document.getElementById('costPrompt').textContent        = '$' + c.prompt_usd.toFixed(6);
+        document.getElementById('costMom').textContent           = '$' + (c.mom_usd||0).toFixed(6);
         document.getElementById('costTotal').textContent         = '$' + c.total_usd.toFixed(6);
         document.getElementById('tokTranscription').textContent  = `in:${c.transcription_tokens.input} out:${c.transcription_tokens.output}`;
         document.getElementById('tokPrompt').textContent         = `in:${c.prompt_tokens.input} out:${c.prompt_tokens.output}`;
+        document.getElementById('tokMom').textContent            = `in:${(c.mom_tokens||{}).input||0} out:${(c.mom_tokens||{}).output||0}`;
         document.getElementById('transcriptText').textContent    = data.transcript;
         document.getElementById('promptText').textContent        = data.prompt;
+        document.getElementById('momText').innerHTML             = data.mom ? markdownToHtml(data.mom) : '';
         show('resultsCard');
         loadStats();
       } catch (err) {
@@ -396,10 +460,47 @@
       }
     }
 
+    function markdownToHtml(md) {
+      let html = esc(md);
+      html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-slate-900 mt-3 mb-2">$1</h1>');
+      html = html.replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-slate-800 mt-3 mb-1">$1</h2>');
+      html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-slate-700 mt-2 mb-1">$1</h3>');
+      html = html.replace(/^\*\*(.+?)\*\*/gm, '<strong class="text-slate-900">$1</strong>');
+      html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-600">$1</li>');
+      html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-600">$1</li>');
+      html = html.replace(/^---$/gm, '<hr class="my-3 border-slate-200">');
+      html = html.replace(/\|(.+)\|/g, function(m) {
+        if (m.indexOf('---') >= 0) return m;
+        const cells = m.split('|').filter(c => c.trim());
+        return '<tr>' + cells.map(c => {
+          const isHeader = /\*\*/.test(c);
+          const tag = isHeader ? 'th' : 'td';
+          const cls = isHeader ? 'px-3 py-1 text-left text-xs font-semibold text-slate-700 bg-purple-100' : 'px-3 py-1 text-left text-xs text-slate-600';
+          return `<${tag} class="${cls}">${c.trim().replace(/\*\*/g,'')}</${tag}>`;
+        }).join('') + '</tr>';
+      });
+      html = html.replace(/(<tr>.*?<\/tr>)/gs, function(m) {
+        return '<table class="w-full border-collapse border border-purple-200 rounded-lg overflow-hidden my-2"><tbody>' + m + '</tbody></table>';
+      });
+      html = html.replace(/<\/li>\s*<li/g, '</li><li');
+      html = html.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul class="my-1">$1</ul>');
+      html = html.replace(/\n\n/g, '<br><br>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
     function downloadPrompt() {
       const a = Object.assign(document.createElement('a'), {
         href: URL.createObjectURL(new Blob([document.getElementById('promptText').textContent],{type:'text/plain'})),
         download: 'prompt.txt',
+      });
+      a.click();
+    }
+
+    function downloadMom() {
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([document.getElementById('momText').textContent || ''],{type:'text/markdown'})),
+        download: 'MOM_Report.md',
       });
       a.click();
     }
@@ -421,8 +522,9 @@
     function resetUpload() { hide('resultsCard'); hide('errorCard'); clearFile(); }
     function formatBytes(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
     function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function show(id) { document.getElementById(id).classList.remove('hidden'); }
-    function hide(id) { document.getElementById(id).classList.add('hidden'); }
+    function escapeHtml(s) { return esc(s); }
+    function show(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
+    function hide(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
 
     loadStats();
   </script>

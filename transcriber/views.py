@@ -14,7 +14,7 @@ from openai import OpenAI
 
 from accounts.decorators import approved_required
 from .models import Transcription, TrialUpload
-from .pipeline import AUDIO_EXTENSIONS, build_ai_prompt, prepare_media, transcribe_media
+from .pipeline import AUDIO_EXTENSIONS, build_ai_prompt, build_mom, prepare_media, transcribe_media
 
 ALLOWED_EXTENSIONS = AUDIO_EXTENSIONS | {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
@@ -33,6 +33,8 @@ TRANSCRIPTION_INPUT_PER_1M  = 1.25   # gpt-4o-mini-transcribe
 TRANSCRIPTION_OUTPUT_PER_1M = 5.00
 PROMPT_INPUT_PER_1M  = 0.40          # gpt-4.1-mini
 PROMPT_OUTPUT_PER_1M = 1.60
+MOM_INPUT_PER_1M     = 0.40          # gpt-4.1-mini (same model)
+MOM_OUTPUT_PER_1M    = 1.60
 
 
 def _calc_cost(in_tok: int, out_tok: int, in_rate: float, out_rate: float) -> float:
@@ -52,15 +54,15 @@ def index(request):
 @login_required
 @approved_required
 def transcribe(request):
-    if "file" not in request.FILES:
-        return JsonResponse({"error": "No file uploaded."}, status=400)
+    files = request.FILES.getlist("files")
+    if not files:
+        return JsonResponse({"error": "No files uploaded."}, status=400)
 
     # Package limit check (skip for admin/superuser or TEST_MODE)
     if not TEST_MODE and not request.user.is_admin_role():
         try:
             cp = request.user.customer_package
             if not cp.can_transcribe():
-                remaining = cp.transcriptions_remaining()
                 return JsonResponse(
                     {"error": f"Transcription limit reached. You have used all {cp.package.max_transcriptions} transcriptions in your package."},
                     status=403,
@@ -70,11 +72,11 @@ def transcribe(request):
                 {"error": "No package assigned to your account. Please contact an admin."},
                 status=403,
             )
-    uploaded = request.FILES["file"]
-    suffix = Path(uploaded.name).suffix.lower()
 
-    if suffix not in ALLOWED_EXTENSIONS:
-        return JsonResponse({"error": "Unsupported file type."}, status=400)
+    for uploaded in files:
+        suffix = Path(uploaded.name).suffix.lower()
+        if suffix not in ALLOWED_EXTENSIONS:
+            return JsonResponse({"error": f"Unsupported file type: {uploaded.name}"}, status=400)
 
     if not os.environ.get("OPENAI_API_KEY"):
         return JsonResponse({"error": "OPENAI_API_KEY is not configured."}, status=500)
@@ -82,37 +84,65 @@ def transcribe(request):
     client = OpenAI()
 
     try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            saved = Path(temp_dir) / f"upload{suffix}"
-            with open(str(saved), "wb") as fh:
-                for chunk in uploaded.chunks():
-                    fh.write(chunk)
+        all_transcripts: list[str] = []
+        filenames: list[str] = []
+        total_transcription_in = 0
+        total_transcription_out = 0
+        total_upload_mb = 0.0
 
-            ready_audio = prepare_media(saved, temp_dir)
-            t_result = transcribe_media(client, ready_audio)
-            p_result = build_ai_prompt(client, t_result.text)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for uploaded in files:
+                filenames.append(uploaded.name)
+                total_upload_mb += uploaded.size / (1024 * 1024)
+                suffix = Path(uploaded.name).suffix.lower()
+                saved = Path(temp_dir) / f"upload_{uploaded.name}"
+                with open(str(saved), "wb") as fh:
+                    for chunk in uploaded.chunks():
+                        fh.write(chunk)
+
+                ready_audio = prepare_media(saved, temp_dir)
+                t_result = transcribe_media(client, ready_audio)
+                all_transcripts.append(f"--- {uploaded.name} ---\n{t_result.text}")
+                total_transcription_in += t_result.input_tokens
+                total_transcription_out += t_result.output_tokens
+
+        combined_transcript = "\n\n".join(all_transcripts)
+
+        # Generate AI prompt from combined transcript
+        p_result = build_ai_prompt(client, combined_transcript)
+
+        # Generate MOM report from combined transcript
+        m_result = build_mom(client, combined_transcript)
 
         transcription_cost = _calc_cost(
-            t_result.input_tokens, t_result.output_tokens,
+            total_transcription_in, total_transcription_out,
             TRANSCRIPTION_INPUT_PER_1M, TRANSCRIPTION_OUTPUT_PER_1M,
         )
         prompt_cost = _calc_cost(
             p_result.input_tokens, p_result.output_tokens,
             PROMPT_INPUT_PER_1M, PROMPT_OUTPUT_PER_1M,
         )
-        total_cost = transcription_cost + prompt_cost
+        mom_cost = _calc_cost(
+            m_result.input_tokens, m_result.output_tokens,
+            MOM_INPUT_PER_1M, MOM_OUTPUT_PER_1M,
+        )
+        total_cost = transcription_cost + prompt_cost + mom_cost
 
         Transcription.objects.create(
             user=request.user,
-            filename=uploaded.name,
-            transcript=t_result.text,
+            filename=", ".join(filenames),
+            transcript=combined_transcript,
             ai_prompt=p_result.text,
-            transcription_in_tokens=t_result.input_tokens,
-            transcription_out_tokens=t_result.output_tokens,
+            mom_report=m_result.text,
+            transcription_in_tokens=total_transcription_in,
+            transcription_out_tokens=total_transcription_out,
             transcription_cost_usd=transcription_cost,
             prompt_in_tokens=p_result.input_tokens,
             prompt_out_tokens=p_result.output_tokens,
             prompt_cost_usd=prompt_cost,
+            mom_in_tokens=m_result.input_tokens,
+            mom_out_tokens=m_result.output_tokens,
+            mom_cost_usd=mom_cost,
             total_cost_usd=total_cost,
         )
 
@@ -121,25 +151,31 @@ def transcribe(request):
             try:
                 cp = request.user.customer_package
                 cp.transcriptions_used += 1
-                cp.uploads_used_mb += uploaded.size / (1024 * 1024)
+                cp.uploads_used_mb += total_upload_mb
                 cp.save()
             except Exception:
                 pass
 
         return JsonResponse({
-            "transcript": t_result.text,
+            "transcript": combined_transcript,
             "prompt": p_result.text,
+            "mom": m_result.text,
             "cost": {
                 "transcription_usd": round(transcription_cost, 6),
                 "prompt_usd": round(prompt_cost, 6),
+                "mom_usd": round(mom_cost, 6),
                 "total_usd": round(total_cost, 6),
                 "transcription_tokens": {
-                    "input": t_result.input_tokens,
-                    "output": t_result.output_tokens,
+                    "input": total_transcription_in,
+                    "output": total_transcription_out,
                 },
                 "prompt_tokens": {
                     "input": p_result.input_tokens,
                     "output": p_result.output_tokens,
+                },
+                "mom_tokens": {
+                    "input": m_result.input_tokens,
+                    "output": m_result.output_tokens,
                 },
             },
         })
@@ -153,9 +189,10 @@ def history(request):
     qs = Transcription.objects.all() if request.user.is_admin_role() else Transcription.objects.filter(user=request.user)
     items = list(
         qs.values(
-            "id", "filename", "transcript", "ai_prompt",
+            "id", "filename", "transcript", "ai_prompt", "mom_report",
             "transcription_in_tokens", "transcription_out_tokens", "transcription_cost_usd",
             "prompt_in_tokens", "prompt_out_tokens", "prompt_cost_usd",
+            "mom_in_tokens", "mom_out_tokens", "mom_cost_usd",
             "total_cost_usd", "created_at",
         )[:50]
     )
@@ -209,20 +246,21 @@ def trial_transcribe(request):
                 status=403,
             )
 
-    if "file" not in request.FILES:
+    if "file" not in request.FILES and "files" not in request.FILES:
         return JsonResponse({"error": "No file uploaded."}, status=400)
 
-    uploaded = request.FILES["file"]
-    file_size_mb = uploaded.size / (1024 * 1024)
-    if not TEST_MODE and file_size_mb > TRIAL_MAX_FILE_SIZE_MB:
-        return JsonResponse(
-            {"error": f"Trial uploads are limited to {TRIAL_MAX_FILE_SIZE_MB} MB. Please upload a smaller file."},
-            status=400,
-        )
+    files = request.FILES.getlist("files") or [request.FILES["file"]]
 
-    suffix = Path(uploaded.name).suffix.lower()
-    if suffix not in ALLOWED_EXTENSIONS:
-        return JsonResponse({"error": "Unsupported file type."}, status=400)
+    for uploaded in files:
+        file_size_mb = uploaded.size / (1024 * 1024)
+        if not TEST_MODE and file_size_mb > TRIAL_MAX_FILE_SIZE_MB:
+            return JsonResponse(
+                {"error": f"Trial uploads are limited to {TRIAL_MAX_FILE_SIZE_MB} MB. {uploaded.name} is {file_size_mb:.1f} MB."},
+                status=400,
+            )
+        suffix = Path(uploaded.name).suffix.lower()
+        if suffix not in ALLOWED_EXTENSIONS:
+            return JsonResponse({"error": f"Unsupported file type: {uploaded.name}"}, status=400)
 
     if not os.environ.get("OPENAI_API_KEY"):
         return JsonResponse({"error": "OPENAI_API_KEY is not configured."}, status=500)
@@ -230,54 +268,82 @@ def trial_transcribe(request):
     client = OpenAI()
 
     try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            saved = Path(temp_dir) / f"upload{suffix}"
-            with open(str(saved), "wb") as fh:
-                for chunk in uploaded.chunks():
-                    fh.write(chunk)
+        all_transcripts: list[str] = []
+        filenames: list[str] = []
+        total_transcription_in = 0
+        total_transcription_out = 0
 
-            ready_audio = prepare_media(saved, temp_dir)
-            t_result = transcribe_media(client, ready_audio)
-            p_result = build_ai_prompt(client, t_result.text)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for uploaded in files:
+                filenames.append(uploaded.name)
+                suffix = Path(uploaded.name).suffix.lower()
+                saved = Path(temp_dir) / f"upload_{uploaded.name}"
+                with open(str(saved), "wb") as fh:
+                    for chunk in uploaded.chunks():
+                        fh.write(chunk)
+
+                ready_audio = prepare_media(saved, temp_dir)
+                t_result = transcribe_media(client, ready_audio)
+                all_transcripts.append(f"--- {uploaded.name} ---\n{t_result.text}")
+                total_transcription_in += t_result.input_tokens
+                total_transcription_out += t_result.output_tokens
+
+        combined_transcript = "\n\n".join(all_transcripts)
+        p_result = build_ai_prompt(client, combined_transcript)
+        m_result = build_mom(client, combined_transcript)
 
         transcription_cost = _calc_cost(
-            t_result.input_tokens, t_result.output_tokens,
+            total_transcription_in, total_transcription_out,
             TRANSCRIPTION_INPUT_PER_1M, TRANSCRIPTION_OUTPUT_PER_1M,
         )
         prompt_cost = _calc_cost(
             p_result.input_tokens, p_result.output_tokens,
             PROMPT_INPUT_PER_1M, PROMPT_OUTPUT_PER_1M,
         )
-        total_cost = transcription_cost + prompt_cost
+        mom_cost = _calc_cost(
+            m_result.input_tokens, m_result.output_tokens,
+            MOM_INPUT_PER_1M, MOM_OUTPUT_PER_1M,
+        )
+        total_cost = transcription_cost + prompt_cost + mom_cost
 
         Transcription.objects.create(
             user=None,
-            filename=uploaded.name,
-            transcript=t_result.text,
+            filename=", ".join(filenames),
+            transcript=combined_transcript,
             ai_prompt=p_result.text,
-            transcription_in_tokens=t_result.input_tokens,
-            transcription_out_tokens=t_result.output_tokens,
+            mom_report=m_result.text,
+            transcription_in_tokens=total_transcription_in,
+            transcription_out_tokens=total_transcription_out,
             transcription_cost_usd=transcription_cost,
             prompt_in_tokens=p_result.input_tokens,
             prompt_out_tokens=p_result.output_tokens,
             prompt_cost_usd=prompt_cost,
+            mom_in_tokens=m_result.input_tokens,
+            mom_out_tokens=m_result.output_tokens,
+            mom_cost_usd=mom_cost,
             total_cost_usd=total_cost,
         )
 
         return JsonResponse({
-            "transcript": t_result.text,
+            "transcript": combined_transcript,
             "prompt": p_result.text,
+            "mom": m_result.text,
             "cost": {
                 "transcription_usd": round(transcription_cost, 6),
                 "prompt_usd":        round(prompt_cost, 6),
+                "mom_usd":           round(mom_cost, 6),
                 "total_usd":         round(total_cost, 6),
                 "transcription_tokens": {
-                    "input":  t_result.input_tokens,
-                    "output": t_result.output_tokens,
+                    "input":  total_transcription_in,
+                    "output": total_transcription_out,
                 },
                 "prompt_tokens": {
                     "input":  p_result.input_tokens,
                     "output": p_result.output_tokens,
+                },
+                "mom_tokens": {
+                    "input":  m_result.input_tokens,
+                    "output": m_result.output_tokens,
                 },
             },
         })
