@@ -73,7 +73,7 @@ Or use the existing account: **admin / admin123**
 ### 6. Start the server
 
 ```powershell
-python manage.py runserver
+python manage.py runserver 5000
 ```
 
 Server runs at: **http://127.0.0.1:8000/**

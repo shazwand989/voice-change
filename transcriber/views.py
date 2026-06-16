@@ -21,6 +21,7 @@ ALLOWED_EXTENSIONS = AUDIO_EXTENSIONS | {".mp4", ".mov", ".mkv", ".avi", ".webm"
 TRIAL_MAX_FILE_SIZE_MB = int(os.environ.get("TRIAL_MAX_FILE_SIZE_MB", 5))  # set in .env
 TRIAL_WHATSAPP        = "019-254 8927"
 TRIAL_WHATSAPP_LINK   = "https://wa.me/60192548927"
+TEST_MODE             = os.environ.get("TEST_MODE", "").lower() in ("1", "true", "yes")
 
 
 def _get_client_ip(request):
@@ -54,8 +55,8 @@ def transcribe(request):
     if "file" not in request.FILES:
         return JsonResponse({"error": "No file uploaded."}, status=400)
 
-    # Package limit check (skip for admin/superuser)
-    if not request.user.is_admin_role():
+    # Package limit check (skip for admin/superuser or TEST_MODE)
+    if not TEST_MODE and not request.user.is_admin_role():
         try:
             cp = request.user.customer_package
             if not cp.can_transcribe():
@@ -115,8 +116,8 @@ def transcribe(request):
             total_cost_usd=total_cost,
         )
 
-        # Increment package usage counter (non-admin only)
-        if not request.user.is_admin_role():
+        # Increment package usage counter (skip admin and TEST_MODE)
+        if not TEST_MODE and not request.user.is_admin_role():
             try:
                 cp = request.user.customer_package
                 cp.transcriptions_used += 1
@@ -184,7 +185,7 @@ def stats(request):
 
 def trial_index(request):
     ip = _get_client_ip(request)
-    already_used = TrialUpload.objects.filter(ip_address=ip).exists()
+    already_used = False if TEST_MODE else TrialUpload.objects.filter(ip_address=ip).exists()
     return render(request, "transcriber/trial.html", {
         "already_used":    already_used,
         "max_mb":          TRIAL_MAX_FILE_SIZE_MB,
@@ -199,20 +200,21 @@ def trial_transcribe(request):
     ip = _get_client_ip(request)
 
     # Reserve the slot atomically — catches both repeat and concurrent requests
-    try:
-        TrialUpload.objects.create(ip_address=ip)
-    except IntegrityError:
-        return JsonResponse(
-            {"error": f"Your free trial has already been used. Contact the admin via WhatsApp at {TRIAL_WHATSAPP} to request full access."},
-            status=403,
-        )
+    if not TEST_MODE:
+        try:
+            TrialUpload.objects.create(ip_address=ip)
+        except IntegrityError:
+            return JsonResponse(
+                {"error": f"Your free trial has already been used. Contact the admin via WhatsApp at {TRIAL_WHATSAPP} to request full access."},
+                status=403,
+            )
 
     if "file" not in request.FILES:
         return JsonResponse({"error": "No file uploaded."}, status=400)
 
     uploaded = request.FILES["file"]
     file_size_mb = uploaded.size / (1024 * 1024)
-    if file_size_mb > TRIAL_MAX_FILE_SIZE_MB:
+    if not TEST_MODE and file_size_mb > TRIAL_MAX_FILE_SIZE_MB:
         return JsonResponse(
             {"error": f"Trial uploads are limited to {TRIAL_MAX_FILE_SIZE_MB} MB. Please upload a smaller file."},
             status=400,

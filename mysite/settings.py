@@ -41,12 +41,14 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'transcriber.shazwan-danial.com',
+    'transcriber2.shazwan-danial.com',
     '127.0.0.1',
     'localhost',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://transcriber.shazwan-danial.com',
+    'https://transcriber2.shazwan-danial.com',
 ]
 
 
