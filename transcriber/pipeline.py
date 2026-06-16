@@ -16,8 +16,8 @@ from openai import OpenAI
 AUDIO_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.webm', '.mpga', '.mpeg'}
 
 # gpt-4o-mini-transcribe has a ~25 MB file limit. At 16 kHz mono 16-bit WAV,
-# 5 minutes ≈ 9.6 MB — well under the limit.
-MAX_CHUNK_SECONDS = 300  # 5 minutes
+# 2 minutes ≈ 3.8 MB — small chunks prevent hallucination loops.
+MAX_CHUNK_SECONDS = 120  # 2 minutes
 
 PROMPT_SYSTEM_INSTRUCTIONS = """You turn raw video transcripts into clean AI-ready prompts.
 Write a concise prompt that preserves the speaker's intent, key facts, and any action items.
@@ -146,14 +146,41 @@ def _dedup_loop(text: str, max_repeats: int = 3) -> str:
     return text
 
 
+def _format_speaker_transcript(result) -> str:
+    """Extract speaker-labelled transcript from diarized response."""
+    segments = getattr(result, "segments", None)
+    if not segments:
+        return result.text.strip()
+
+    lines: list[str] = []
+    for seg in segments:
+        speaker = getattr(seg, "speaker", "") or ""
+        text = (getattr(seg, "text", "") or "").strip()
+        if not text:
+            continue
+        # Map SPEAKER_0 → Speaker 1, SPEAKER_1 → Speaker 2, etc.
+        if speaker.startswith("SPEAKER_"):
+            try:
+                num = int(speaker.split("_")[1]) + 1
+                speaker = f"Speaker {num}"
+            except (ValueError, IndexError):
+                pass
+        lines.append(f"{speaker}: {text}" if speaker else text)
+
+    return "\n".join(lines) if lines else result.text.strip()
+
+
 def _transcribe_single(client: OpenAI, audio_path: Path) -> TranscriptResult:
-    """Transcribe a single audio chunk (no splitting)."""
+    """Transcribe a single audio chunk with speaker diarization."""
     with audio_path.open("rb") as f:
         result = client.audio.transcriptions.create(
-            model="whisper-1",
+            model="gpt-4o-mini-transcribe",
             file=f,
+            temperature=0.0,
+            timestamp_granularities=["segment", "speaker"],
+            prompt="This audio may contain Bahasa Melayu, English, and mixed-language conversations. Keep the original language. Do not translate. Preserve names, company names, technical terms, and action items.",
         )
-    text = _dedup_loop(result.text.strip())
+    text = _dedup_loop(_format_speaker_transcript(result))
     usage = getattr(result, "usage", None)
     return TranscriptResult(
         text=text,
@@ -183,7 +210,7 @@ def transcribe_media(client: OpenAI, media_path: Path) -> TranscriptResult:
         result = _transcribe_single(client, chunk_path)
         if not result.text:
             continue  # skip silent / empty chunks
-        texts.append(f"[Part {i + 1}]\n{result.text}")
+        texts.append(result.text)
         total_in += result.input_tokens
         total_out += result.output_tokens
 
