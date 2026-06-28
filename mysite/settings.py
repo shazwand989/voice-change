@@ -34,10 +34,13 @@ if _env_file.exists():
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bd#x*l*mr+mldomi-yoihp0ap+704hf@_j6i4!$(5ufr$s#j^&'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-bd#x*l*mr+mldomi-yoihp0ap+704hf@_j6i4!$(5ufr$s#j^&',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = [
     'transcriber.shazwan-danial.com',
@@ -161,7 +164,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Shared base templates directory
 TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']

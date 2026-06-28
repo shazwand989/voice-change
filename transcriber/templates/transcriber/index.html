@@ -1,532 +1,322 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en" class="h-full">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Transcriber</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          animation: {
-            'pulse-ring': 'pulse-ring 1.5s cubic-bezier(0.215,.61,.355,1) infinite',
-            'fade-up':    'fade-up 0.4s ease forwards',
-            'spin':       'spin 1s linear infinite',
-          },
-          keyframes: {
-            'pulse-ring': { '0%': { transform:'scale(.8)', opacity:'1' }, '100%': { transform:'scale(2)', opacity:'0' } },
-            'fade-up':    { '0%': { opacity:'0', transform:'translateY(14px)' }, '100%': { opacity:'1', transform:'translateY(0)' } },
-            'spin':       { '100%': { transform:'rotate(360deg)' } },
-          },
-        },
-      },
-    }
-  </script>
-  <style>
-    body { background: #f8fafc; }
-    .card    { background:#fff; border:1px solid #e2e8f0; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.06); }
-    .card-sm { background:#f8fafc; border:1px solid #e2e8f0; border-radius:.75rem; }
-    .drop-zone.dragover { border-color:#84cc16; background:rgba(132,204,22,.08); }
-    pre { white-space:pre-wrap; word-break:break-word; }
-    .mom-content h1 { font-size:1.125rem; font-weight:700; color:#0f172a; margin-top:0.75rem; margin-bottom:0.5rem; }
-    .mom-content h2 { font-size:1rem; font-weight:600; color:#1e293b; margin-top:0.75rem; margin-bottom:0.25rem; }
-    .mom-content h3 { font-size:0.875rem; font-weight:600; color:#334155; margin-top:0.5rem; margin-bottom:0.25rem; }
-    .mom-content ul { margin:0.25rem 0; padding-left:1.25rem; }
-    .mom-content li { color:#475569; }
-    .mom-content table { width:100%; border-collapse:collapse; margin:0.5rem 0; }
-    .mom-content th { background:#f3e8ff; color:#374151; font-size:0.75rem; font-weight:600; text-align:left; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
-    .mom-content td { font-size:0.75rem; color:#475569; padding:0.25rem 0.75rem; border:1px solid #e9d5ff; }
-    .mom-content hr { margin:0.75rem 0; border-color:#e2e8f0; }
-    ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:#84cc16; border-radius:2px; }
-  </style>
-</head>
-<body class="min-h-screen font-sans">
+{% extends "base.html" %}
+{% block title %}AI Transcriber{% endblock %}
+{% block main_class %}p-4{% endblock %}
+{% block content %}
+<div class="w-full max-w-2xl mx-auto space-y-5 pb-10">
 
-  <!-- Navbar -->
-  <nav class="bg-white border-b border-slate-200 shadow-sm fixed top-0 left-0 right-0 z-50 px-6 py-3 flex items-center gap-4 flex-wrap">
-    <a href="{% url 'landing' %}" class="text-lime-600 font-bold text-sm mr-auto flex items-center gap-2 hover:text-lime-700 transition-colors">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
-        </svg>
+  <!-- Header + stats -->
+  <div class="text-center space-y-2 pt-4 animate-fade-up">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-lime-500 to-emerald-500 shadow-lg shadow-lime-300/40 mb-1">
+      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+      </svg>
+    </div>
+    <h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Transcriber</h1>
+    <p class="text-slate-500 text-sm">Upload video or audio → transcript + AI prompt</p>
+    <div class="flex items-center justify-center gap-3 mt-3 flex-wrap">
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
+        <span class="text-slate-500 text-xs">Total spent</span>
+        <span id="statTotalCost" class="text-lime-600 font-bold text-sm">$0.000000</span>
       </div>
-      AI<span class="text-slate-900">Transcriber</span>
-    </a>
-    {% if user.is_authenticated %}
-      {% if user.is_admin_role %}
-        <a href="{% url 'accounts:admin_dashboard' %}" class="text-slate-600 hover:text-lime-700 text-xs font-medium transition-colors">Dashboard</a>
-        <a href="{% url 'accounts:user_list' %}"       class="text-slate-600 hover:text-lime-700 text-xs font-medium transition-colors">Users</a>
-        <a href="{% url 'packages:list' %}"            class="text-slate-600 hover:text-lime-700 text-xs font-medium transition-colors">Packages</a>
-      {% else %}
-        <a href="{% url 'accounts:dashboard' %}" class="text-slate-600 hover:text-lime-700 text-xs font-medium transition-colors">My Account</a>
-        {% if user.customer_package %}
-        <span class="text-xs text-slate-500 bg-lime-50 border border-lime-200 rounded-full px-2.5 py-0.5">
-          {% if user.customer_package.transcriptions_remaining == None %}∞{% else %}{{ user.customer_package.transcriptions_remaining }}{% endif %} left
-        </span>
-        {% endif %}
-      {% endif %}
-      <span class="text-xs text-slate-400 border-l border-slate-200 pl-3">{{ user.username }}</span>
-      <a href="{% url 'accounts:logout' %}" class="text-xs text-slate-400 hover:text-red-500 transition-colors">Logout</a>
-    {% endif %}
-  </nav>
-  <div class="h-14"></div>
-
-  <div class="w-full max-w-2xl mx-auto space-y-5 p-4 pb-10">
-
-    <!-- Header + stats -->
-    <div class="text-center space-y-2 pt-4 animate-fade-up">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-lime-500 to-emerald-500 shadow-lg shadow-lime-300/40 mb-1">
-        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
-        </svg>
-      </div>
-      <h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Transcriber</h1>
-      <p class="text-slate-500 text-sm">Upload video or audio → transcript + AI prompt</p>
-      <div class="flex items-center justify-center gap-3 mt-3 flex-wrap">
-        <div class="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-          <span class="text-slate-500 text-xs">Total spent</span>
-          <span id="statTotalCost" class="text-lime-600 font-bold text-sm">$0.000000</span>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-          <span class="text-slate-500 text-xs">Runs</span>
-          <span id="statRuns" class="text-slate-900 font-bold text-sm">0</span>
-        </div>
+      <div class="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
+        <span class="text-slate-500 text-xs">Runs</span>
+        <span id="statRuns" class="text-slate-900 font-bold text-sm">0</span>
       </div>
     </div>
-
-    <!-- Tab bar -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-1 flex gap-1 shadow-sm">
-      <button id="tabUpload"  onclick="switchTab('upload')"  class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-lime-600 transition-all duration-200">Upload</button>
-      <button id="tabHistory" onclick="switchTab('history')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all duration-200">History</button>
-    </div>
-
-    <!-- ═══ UPLOAD TAB ═══ -->
-    <div id="panelUpload">
-
-      <div class="card p-8">
-        <div id="dropZone"
-             class="drop-zone border-2 border-dashed border-lime-300 rounded-2xl p-10 text-center cursor-pointer hover:border-lime-500 hover:bg-lime-50/60 transition-all duration-300 group"
-             onclick="document.getElementById('fileInput').click()"
-             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-          <input type="file" id="fileInput" class="hidden" multiple
-                 accept=".mp4,.mp3,.wav,.m4a,.mov,.mkv,.avi,.webm,.ogg,.flac,.aac,.mpeg,.mpga"
-                 onchange="handleFileSelect(event)" />
-          <div class="flex flex-col items-center gap-3">
-            <div class="w-14 h-14 rounded-xl bg-lime-100 flex items-center justify-center group-hover:bg-lime-200 transition-colors duration-300">
-              <svg class="w-7 h-7 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-              </svg>
-            </div>
-            <div>
-              <p class="text-slate-700 font-medium">Drag &amp; drop or <span class="text-lime-600 underline underline-offset-2">browse</span></p>
-              <p class="text-slate-400 text-xs mt-1">Multi-file · MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
-            </div>
-          </div>
-        </div>
-
-        <div id="fileList" class="hidden mt-4 space-y-2"></div>
-
-        <button id="submitBtn" onclick="doTranscribe()" disabled
-                class="mt-5 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 shadow-lg shadow-lime-300/30 hover:from-lime-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 text-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          <span id="submitLabel">Transcribe, Prompt &amp; MOM</span>
-        </button>
-      </div>
-
-      <!-- Loading -->
-      <div id="loadingCard" class="hidden card p-8 text-center mt-5 animate-fade-up">
-        <div class="relative inline-flex items-center justify-center">
-          <div class="animate-pulse-ring absolute w-16 h-16 rounded-full bg-lime-400/30"></div>
-          <div class="w-16 h-16 rounded-full border-4 border-lime-200 border-t-lime-500 animate-spin"></div>
-        </div>
-        <p id="loadingText" class="text-slate-900 font-semibold mt-5 text-lg">Uploading file…</p>
-        <p class="text-slate-500 text-sm mt-1">This may take a moment for longer files</p>
-      </div>
-
-      <!-- Results -->
-      <div id="resultsCard" class="hidden space-y-4 mt-5 animate-fade-up">
-
-        <!-- Cost badge -->
-        <div class="card p-4 grid grid-cols-4 gap-3 text-center border-lime-200 bg-lime-50">
-          <div>
-            <p class="text-slate-500 text-xs mb-1">Transcription</p>
-            <p id="costTranscription" class="text-lime-600 font-bold text-sm">$0.000000</p>
-            <p id="tokTranscription"  class="text-slate-400 text-xs mt-0.5"></p>
-          </div>
-          <div class="border-x border-slate-200">
-            <p class="text-slate-500 text-xs mb-1">Prompt</p>
-            <p id="costPrompt" class="text-emerald-600 font-bold text-sm">$0.000000</p>
-            <p id="tokPrompt"  class="text-slate-400 text-xs mt-0.5"></p>
-          </div>
-          <div class="border-r border-slate-200">
-            <p class="text-slate-500 text-xs mb-1">MOM</p>
-            <p id="costMom" class="text-purple-600 font-bold text-sm">$0.000000</p>
-            <p id="tokMom"  class="text-slate-400 text-xs mt-0.5"></p>
-          </div>
-          <div>
-            <p class="text-slate-500 text-xs mb-1">This run</p>
-            <p id="costTotal" class="text-slate-900 font-bold text-sm">$0.000000</p>
-          </div>
-        </div>
-
-        <!-- Transcript -->
-        <div class="card p-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              </div>
-              <h2 class="text-slate-900 font-semibold text-sm">Transcript</h2>
-            </div>
-            <button onclick="copyText('transcriptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              Copy
-            </button>
-          </div>
-          <pre id="transcriptText" class="text-slate-600 text-sm leading-relaxed max-h-52 overflow-y-auto bg-slate-50 rounded-xl p-3"></pre>
-        </div>
-
-        <!-- AI Prompt -->
-        <div class="card p-6 border-lime-200">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-lime-100 flex items-center justify-center">
-                <svg class="w-4 h-4 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-              </div>
-              <h2 class="text-slate-900 font-semibold text-sm">AI Prompt</h2>
-              <span class="text-xs bg-lime-100 text-lime-700 px-2 py-0.5 rounded-full font-medium">Ready to use</span>
-            </div>
-            <button onclick="copyText('promptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              Copy
-            </button>
-          </div>
-          <pre id="promptText" class="text-slate-700 text-sm leading-relaxed max-h-52 overflow-y-auto bg-lime-50 rounded-xl p-3"></pre>
-          <button onclick="downloadPrompt()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/20 transition-all duration-300 flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-            Download prompt.txt
-          </button>
-        </div>
-
-        <!-- MOM Report -->
-        <div id="momCard" class="card p-6 border-purple-200">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
-                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              </div>
-              <h2 class="text-slate-900 font-semibold text-sm">Minutes of Meeting (MOM)</h2>
-            </div>
-            <button onclick="copyText('momText',this)" class="text-xs text-slate-400 hover:text-purple-600 transition-colors flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              Copy
-            </button>
-          </div>
-          <div id="momText" class="text-slate-600 text-sm leading-relaxed max-h-96 overflow-y-auto bg-purple-50 rounded-xl p-4 mom-content"></div>
-          <button onclick="downloadMom()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 shadow-lg shadow-purple-300/20 transition-all duration-300 flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-            Download MOM.md
-          </button>
-        </div>
-
-        <button onclick="resetUpload()" class="w-full py-3 rounded-2xl text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300">
-          ↩ Transcribe another file
-        </button>
-      </div>
-
-      <!-- Error -->
-      <div id="errorCard" class="hidden card p-6 border-red-200 bg-red-50 mt-5 animate-fade-up">
-        <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <div>
-            <p class="text-red-700 font-medium text-sm">Something went wrong</p>
-            <p id="errorText" class="text-slate-600 text-xs mt-1"></p>
-          </div>
-        </div>
-        <button onclick="resetUpload()" class="mt-4 text-sm text-slate-500 hover:text-slate-900 transition-colors">Try again →</button>
-      </div>
-
-    </div><!-- /panelUpload -->
-
-    <!-- ═══ HISTORY TAB ═══ -->
-    <div id="panelHistory" class="hidden space-y-4 animate-fade-up">
-      <div class="flex items-center justify-between">
-        <h2 class="text-slate-900 font-semibold text-lg">Past Transcriptions</h2>
-        <button onclick="loadHistory()" class="text-xs text-lime-600 hover:text-lime-700 flex items-center gap-1 transition-colors font-medium">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Refresh
-        </button>
-      </div>
-      <div id="historyLoading" class="hidden text-center py-8 text-slate-400 text-sm">Loading…</div>
-      <div id="historyEmpty"   class="hidden card p-8 text-center text-slate-400 text-sm">No transcriptions yet.</div>
-      <div id="historyList"    class="space-y-3"></div>
-    </div>
-
   </div>
 
-  <script>
-    const URLS = {
-      transcribe: "{% url 'transcriber:transcribe' %}",
-      history:    "{% url 'transcriber:history' %}",
-      stats:      "{% url 'transcriber:stats' %}",
-    };
-    const CSRF = "{{ csrf_token }}";
+  <!-- Tab bar -->
+  <div class="bg-white border border-slate-200 rounded-2xl p-1 flex gap-1 shadow-sm">
+    <button id="tabUpload"  onclick="switchTab('upload')"  class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-lime-600 transition-all duration-200">Upload</button>
+    <button id="tabHistory" onclick="switchTab('history')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all duration-200">History</button>
+  </div>
 
-    let selectedFiles = [];
+  <!-- ═══ UPLOAD TAB ═══ -->
+  <div id="panelUpload">
 
-    function switchTab(tab) {
-      const isUpload = tab === 'upload';
-      document.getElementById('panelUpload').classList.toggle('hidden', !isUpload);
-      document.getElementById('panelHistory').classList.toggle('hidden', isUpload);
-      document.getElementById('tabUpload').className  = 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ' + (isUpload  ? 'text-white bg-lime-600' : 'text-slate-500 hover:text-slate-700');
-      document.getElementById('tabHistory').className = 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ' + (!isUpload ? 'text-white bg-lime-600' : 'text-slate-500 hover:text-slate-700');
-      if (!isUpload) loadHistory();
-    }
-
-    async function loadStats() {
-      try {
-        const s = await (await fetch(URLS.stats)).json();
-        document.getElementById('statTotalCost').textContent = '$' + (s.total_cost||0).toFixed(6);
-        document.getElementById('statRuns').textContent = s.total_runs;
-      } catch(_) {}
-    }
-
-    async function loadHistory() {
-      show('historyLoading'); hide('historyEmpty'); hide('historyList');
-      try {
-        const items = await (await fetch(URLS.history)).json();
-        hide('historyLoading');
-        if (!items.length) { show('historyEmpty'); return; }
-        const list = document.getElementById('historyList');
-        list.innerHTML = '';
-        items.forEach(item => list.appendChild(buildHistoryCard(item)));
-        show('historyList');
-      } catch(e) { hide('historyLoading'); show('historyEmpty'); }
-    }
-
-    function buildHistoryCard(item) {
-      const div = document.createElement('div');
-      div.className = 'card p-5';
-      div.innerHTML = `
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex-1 min-w-0">
-            <p class="text-slate-900 font-medium text-sm truncate">${esc(item.filename)}</p>
-            <p class="text-slate-500 text-xs mt-0.5">${item.created_at}</p>
+    <div class="card p-8">
+      <div id="dropZone"
+           class="drop-zone border-2 border-dashed border-lime-300 rounded-2xl p-10 text-center cursor-pointer hover:border-lime-500 hover:bg-lime-50/60 transition-all duration-300 group"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <input type="file" id="fileInput" class="hidden" multiple
+               accept=".mp4,.mp3,.wav,.m4a,.mov,.mkv,.avi,.webm,.ogg,.flac,.aac,.mpeg,.mpga"
+               onchange="handleFileSelect(event)" />
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-14 h-14 rounded-xl bg-lime-100 flex items-center justify-center group-hover:bg-lime-200 transition-colors duration-300">
+            <svg class="w-7 h-7 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
           </div>
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <div class="text-right">
-              <p class="text-lime-600 font-bold text-sm">$${item.total_cost_usd.toFixed(6)}</p>
-              <p class="text-slate-400 text-xs">total cost</p>
+          <div>
+            <p class="text-slate-700 font-medium">Drag &amp; drop or <span class="text-lime-600 underline underline-offset-2">browse</span></p>
+            <p class="text-slate-400 text-xs mt-1">Multi-file · MP4 · MP3 · WAV · M4A · MOV · WebM · OGG · FLAC</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="fileList" class="hidden mt-4 space-y-2"></div>
+
+      <button id="submitBtn" onclick="doTranscribe()" disabled
+              class="mt-5 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 shadow-lg shadow-lime-300/30 hover:from-lime-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <span id="submitLabel">Transcribe, Prompt &amp; MOM</span>
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingCard" class="hidden card p-8 text-center mt-5 animate-fade-up">
+      <div class="relative inline-flex items-center justify-center">
+        <div class="animate-pulse-ring absolute w-16 h-16 rounded-full bg-lime-400/30"></div>
+        <div class="w-16 h-16 rounded-full border-4 border-lime-200 border-t-lime-500 animate-spin"></div>
+      </div>
+      <p id="loadingText" class="text-slate-900 font-semibold mt-5 text-lg">Uploading file…</p>
+      <p class="text-slate-500 text-sm mt-1">This may take a moment for longer files</p>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsCard" class="hidden space-y-4 mt-5 animate-fade-up">
+
+      <!-- Cost badge -->
+      <div class="card p-4 grid grid-cols-4 gap-3 text-center border-lime-200 bg-lime-50">
+        <div>
+          <p class="text-slate-500 text-xs mb-1">Transcription</p>
+          <p id="costTranscription" class="text-lime-600 font-bold text-sm">$0.000000</p>
+          <p id="tokTranscription"  class="text-slate-400 text-xs mt-0.5"></p>
+        </div>
+        <div class="border-x border-slate-200">
+          <p class="text-slate-500 text-xs mb-1">Prompt</p>
+          <p id="costPrompt" class="text-emerald-600 font-bold text-sm">$0.000000</p>
+          <p id="tokPrompt"  class="text-slate-400 text-xs mt-0.5"></p>
+        </div>
+        <div class="border-r border-slate-200">
+          <p class="text-slate-500 text-xs mb-1">MOM</p>
+          <p id="costMom" class="text-purple-600 font-bold text-sm">$0.000000</p>
+          <p id="tokMom"  class="text-slate-400 text-xs mt-0.5"></p>
+        </div>
+        <div>
+          <p class="text-slate-500 text-xs mb-1">This run</p>
+          <p id="costTotal" class="text-slate-900 font-bold text-sm">$0.000000</p>
+        </div>
+      </div>
+
+      <!-- Transcript -->
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <button onclick="toggleCard(this)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors">
-              <svg class="w-4 h-4 rotate-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </button>
+            <h2 class="text-slate-900 font-semibold text-sm">Transcript</h2>
           </div>
-        </div>
-        <div class="flex gap-4 mt-3 text-xs text-slate-400 flex-wrap">
-          <span>Transcription: <span class="text-lime-600">$${item.transcription_cost_usd.toFixed(6)}</span></span>
-          <span>Prompt: <span class="text-emerald-600">$${item.prompt_cost_usd.toFixed(6)}</span></span>
-          <span>MOM: <span class="text-purple-600">$${(item.mom_cost_usd||0).toFixed(6)}</span></span>
-        </div>
-        <div class="detail hidden mt-4 space-y-3">
-          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-            <p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">Transcript</p>
-            <pre class="text-slate-600 text-xs leading-relaxed max-h-36 overflow-y-auto">${esc(item.transcript)}</pre>
-          </div>
-          <div class="bg-lime-50 rounded-xl p-4 border border-lime-200">
-            <p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">AI Prompt</p>
-            <pre class="text-slate-700 text-xs leading-relaxed max-h-36 overflow-y-auto">${esc(item.ai_prompt)}</pre>
-          </div>
-          ${item.mom_report ? `<div class="bg-purple-50 rounded-xl p-4 border border-purple-200">
-            <p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">MOM Report</p>
-            <div class="text-slate-600 text-xs leading-relaxed max-h-36 overflow-y-auto mom-content">${escapeHtml(item.mom_report)}</div>
-          </div>` : ''}
-          <div class="flex gap-2">
-            <button onclick="copyRaw('${btoa(unescape(encodeURIComponent(item.transcript)))}')" class="flex-1 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors">Copy transcript</button>
-            <button onclick="copyRaw('${btoa(unescape(encodeURIComponent(item.ai_prompt)))}')"  class="flex-1 py-2 rounded-lg text-xs text-lime-700 hover:text-lime-900 bg-lime-100 hover:bg-lime-200 transition-colors">Copy prompt</button>
-          </div>
-        </div>`;
-      return div;
-    }
-
-    function toggleCard(btn) {
-      const detail = btn.closest('.card').querySelector('.detail');
-      const icon   = btn.querySelector('.rotate-icon');
-      icon.style.transform = detail.classList.toggle('hidden') ? '' : 'rotate(180deg)';
-    }
-
-    function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
-    function handleDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
-    function handleDrop(e)      { e.preventDefault(); handleDragLeave(); addFiles(Array.from(e.dataTransfer.files)); }
-    function handleFileSelect(e){ addFiles(Array.from(e.target.files)); }
-
-    function addFiles(files) {
-      for (const f of files) {
-        if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
-          selectedFiles.push(f);
-        }
-      }
-      renderFileList();
-    }
-
-    function removeFile(idx) {
-      selectedFiles.splice(idx, 1);
-      renderFileList();
-    }
-
-    function renderFileList() {
-      const list = document.getElementById('fileList');
-      if (!selectedFiles.length) {
-        list.classList.add('hidden');
-        list.innerHTML = '';
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('submitLabel').textContent = 'Transcribe, Prompt & MOM';
-        return;
-      }
-      list.classList.remove('hidden');
-      document.getElementById('submitBtn').disabled = false;
-      document.getElementById('submitLabel').textContent = `Transcribe ${selectedFiles.length} file(s), Prompt & MOM`;
-      list.innerHTML = selectedFiles.map((f, i) => `
-        <div class="flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-2">
-          <span class="text-slate-800 text-sm font-medium truncate flex-1">${esc(f.name)}</span>
-          <span class="text-slate-500 text-xs flex-shrink-0">${formatBytes(f.size)}</span>
-          <button onclick="removeFile(${i})" class="text-slate-400 hover:text-red-500 transition-colors ml-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <button onclick="copyText('transcriptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy
           </button>
-        </div>`).join('');
-    }
+        </div>
+        <pre id="transcriptText" class="text-slate-600 text-sm leading-relaxed max-h-52 overflow-y-auto bg-slate-50 rounded-xl p-3"></pre>
+      </div>
 
-    function clearFile() {
-      selectedFiles = [];
-      renderFileList();
-      document.getElementById('fileInput').value = '';
-    }
+      <!-- AI Prompt -->
+      <div class="card p-6 border-lime-200">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-lime-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            <h2 class="text-slate-900 font-semibold text-sm">AI Prompt</h2>
+            <span class="text-xs bg-lime-100 text-lime-700 px-2 py-0.5 rounded-full font-medium">Ready to use</span>
+          </div>
+          <button onclick="copyText('promptText',this)" class="text-xs text-slate-400 hover:text-lime-600 transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy
+          </button>
+        </div>
+        <pre id="promptText" class="text-slate-700 text-sm leading-relaxed max-h-52 overflow-y-auto bg-lime-50 rounded-xl p-3"></pre>
+        <button onclick="downloadPrompt()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/20 transition-all duration-300 flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download prompt.txt
+        </button>
+      </div>
 
-    async function doTranscribe() {
-      if (!selectedFiles.length) return;
-      show('loadingCard'); hide('resultsCard'); hide('errorCard');
-      document.getElementById('loadingText').textContent = 'Uploading files…';
+      <!-- MOM Report -->
+      <div id="momCard" class="card p-6 border-purple-200">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h2 class="text-slate-900 font-semibold text-sm">Minutes of Meeting (MOM)</h2>
+          </div>
+          <button onclick="copyText('momText',this)" class="text-xs text-slate-400 hover:text-purple-600 transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy
+          </button>
+        </div>
+        <div id="momText" class="text-slate-600 text-sm leading-relaxed max-h-96 overflow-y-auto bg-purple-50 rounded-xl p-4 mom-content"></div>
+        <button onclick="downloadMom()" class="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 shadow-lg shadow-purple-300/20 transition-all duration-300 flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download MOM.md
+        </button>
+      </div>
 
-      const form = new FormData();
-      selectedFiles.forEach(f => form.append('files', f));
+      <button onclick="resetUpload()" class="w-full py-3 rounded-2xl text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 transition-all duration-300">
+        ↩ Transcribe another file
+      </button>
+    </div>
 
-      const timers = [
-        setTimeout(() => setLoadingText('Transcribing audio…'),  3000),
-        setTimeout(() => setLoadingText('Building AI prompt…'),  15000),
-        setTimeout(() => setLoadingText('Generating MOM report…'), 25000),
-      ];
-      function setLoadingText(t) {
-        if (!document.getElementById('loadingCard').classList.contains('hidden'))
-          document.getElementById('loadingText').textContent = t;
-      }
+    <!-- Error -->
+    <div id="errorCard" class="hidden card p-6 border-red-200 bg-red-50 mt-5 animate-fade-up">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-red-700 font-medium text-sm">Something went wrong</p>
+          <p id="errorText" class="text-slate-600 text-xs mt-1"></p>
+        </div>
+      </div>
+      <button onclick="resetUpload()" class="mt-4 text-sm text-slate-500 hover:text-slate-900 transition-colors">Try again →</button>
+    </div>
 
-      try {
-        const res  = await fetch(URLS.transcribe, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': CSRF },
-          body: form,
-        });
-        const data = await res.json();
-        timers.forEach(clearTimeout);
-        hide('loadingCard');
+  </div><!-- /panelUpload -->
 
-        if (!res.ok || data.error) {
-          document.getElementById('errorText').textContent = data.error || 'Unexpected error.';
-          show('errorCard'); return;
-        }
+  <!-- ═══ HISTORY TAB ═══ -->
+  <div id="panelHistory" class="hidden space-y-4 animate-fade-up">
+    <div class="flex items-center justify-between">
+      <h2 class="text-slate-900 font-semibold text-lg">Past Transcriptions</h2>
+      <a href="{% url 'transcriber:history_page' %}" class="text-xs text-lime-600 hover:text-lime-700 flex items-center gap-1 transition-colors font-medium">
+        Full history →
+      </a>
+    </div>
+    <div id="historyEmpty" class="hidden card p-8 text-center text-slate-400 text-sm">No transcriptions yet.</div>
+    <div id="historyList"  class="space-y-3"></div>
+  </div>
 
-        const c = data.cost;
-        document.getElementById('costTranscription').textContent = '$' + c.transcription_usd.toFixed(6);
-        document.getElementById('costPrompt').textContent        = '$' + c.prompt_usd.toFixed(6);
-        document.getElementById('costMom').textContent           = '$' + (c.mom_usd||0).toFixed(6);
-        document.getElementById('costTotal').textContent         = '$' + c.total_usd.toFixed(6);
-        document.getElementById('tokTranscription').textContent  = `in:${c.transcription_tokens.input} out:${c.transcription_tokens.output}`;
-        document.getElementById('tokPrompt').textContent         = `in:${c.prompt_tokens.input} out:${c.prompt_tokens.output}`;
-        document.getElementById('tokMom').textContent            = `in:${(c.mom_tokens||{}).input||0} out:${(c.mom_tokens||{}).output||0}`;
-        document.getElementById('transcriptText').textContent    = data.transcript;
-        document.getElementById('promptText').textContent        = data.prompt;
-        document.getElementById('momText').innerHTML             = data.mom ? markdownToHtml(data.mom) : '';
-        show('resultsCard');
-        loadStats();
-      } catch (err) {
-        timers.forEach(clearTimeout);
-        hide('loadingCard');
-        document.getElementById('errorText').textContent = err.message;
-        show('errorCard');
-      }
-    }
+</div>
 
-    function markdownToHtml(md) {
-      let html = esc(md);
-      html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-slate-900 mt-3 mb-2">$1</h1>');
-      html = html.replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-slate-800 mt-3 mb-1">$1</h2>');
-      html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-slate-700 mt-2 mb-1">$1</h3>');
-      html = html.replace(/^\*\*(.+?)\*\*/gm, '<strong class="text-slate-900">$1</strong>');
-      html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-600">$1</li>');
-      html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-600">$1</li>');
-      html = html.replace(/^---$/gm, '<hr class="my-3 border-slate-200">');
-      html = html.replace(/\|(.+)\|/g, function(m) {
-        if (m.indexOf('---') >= 0) return m;
-        const cells = m.split('|').filter(c => c.trim());
-        return '<tr>' + cells.map(c => {
-          const isHeader = /\*\*/.test(c);
-          const tag = isHeader ? 'th' : 'td';
-          const cls = isHeader ? 'px-3 py-1 text-left text-xs font-semibold text-slate-700 bg-purple-100' : 'px-3 py-1 text-left text-xs text-slate-600';
-          return `<${tag} class="${cls}">${c.trim().replace(/\*\*/g,'')}</${tag}>`;
-        }).join('') + '</tr>';
-      });
-      html = html.replace(/(<tr>.*?<\/tr>)/gs, function(m) {
-        return '<table class="w-full border-collapse border border-purple-200 rounded-lg overflow-hidden my-2"><tbody>' + m + '</tbody></table>';
-      });
-      html = html.replace(/<\/li>\s*<li/g, '</li><li');
-      html = html.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul class="my-1">$1</ul>');
-      html = html.replace(/\n\n/g, '<br><br>');
-      html = html.replace(/\n/g, '<br>');
-      return html;
-    }
+<script>
+  const URLS = {
+    transcribe: "{% url 'transcriber:transcribe' %}",
+    history:    "{% url 'transcriber:history' %}",
+    stats:      "{% url 'transcriber:stats' %}",
+  };
+  const CSRF = "{{ csrf_token }}";
 
-    function downloadPrompt() {
-      const a = Object.assign(document.createElement('a'), {
-        href: URL.createObjectURL(new Blob([document.getElementById('promptText').textContent],{type:'text/plain'})),
-        download: 'prompt.txt',
-      });
-      a.click();
-    }
+  let selectedFiles = [];
 
-    function downloadMom() {
-      const a = Object.assign(document.createElement('a'), {
-        href: URL.createObjectURL(new Blob([document.getElementById('momText').textContent || ''],{type:'text/markdown'})),
-        download: 'MOM_Report.md',
-      });
-      a.click();
-    }
+  function switchTab(tab) {
+    const isUpload = tab === 'upload';
+    document.getElementById('panelUpload').classList.toggle('hidden', !isUpload);
+    document.getElementById('panelHistory').classList.toggle('hidden', isUpload);
+    document.getElementById('tabUpload').className  = 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ' + (isUpload  ? 'text-white bg-lime-600' : 'text-slate-500 hover:text-slate-700');
+    document.getElementById('tabHistory').className = 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ' + (!isUpload ? 'text-white bg-lime-600' : 'text-slate-500 hover:text-slate-700');
+    if (!isUpload) loadHistory();
+  }
 
-    async function copyText(id, btn) {
-      await navigator.clipboard.writeText(document.getElementById(id).textContent);
-      flashCopy(btn);
-    }
-    async function copyRaw(b64) {
-      await navigator.clipboard.writeText(decodeURIComponent(escape(atob(b64))));
-    }
-    function flashCopy(btn) {
-      const orig = btn.innerHTML;
-      btn.innerHTML = '<svg class="w-3.5 h-3.5 text-lime-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copied!';
-      btn.classList.add('text-lime-600');
-      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-lime-600'); }, 1500);
-    }
+  async function loadStats() {
+    try {
+      const s = await (await fetch(URLS.stats)).json();
+      document.getElementById('statTotalCost').textContent = '$' + (s.total_cost||0).toFixed(6);
+      document.getElementById('statRuns').textContent = s.total_runs;
+    } catch(_) {}
+  }
 
-    function resetUpload() { hide('resultsCard'); hide('errorCard'); clearFile(); }
-    function formatBytes(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
-    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function escapeHtml(s) { return esc(s); }
-    function show(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
-    function hide(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
+  async function loadHistory() {
+    hide('historyEmpty'); hide('historyList');
+    try {
+      const items = await (await fetch(URLS.history)).json();
+      if (!items.length) { show('historyEmpty'); return; }
+      const list = document.getElementById('historyList');
+      list.innerHTML = '';
+      items.forEach(item => list.appendChild(buildHistoryCard(item)));
+      show('historyList');
+    } catch(e) { show('historyEmpty'); }
+  }
 
-    loadStats();
-  </script>
-</body>
-</html>
+  function buildHistoryCard(item) {
+    const div = document.createElement('div');
+    div.className = 'card p-5';
+    div.innerHTML = '<div class="flex items-start justify-between gap-3"><div class="flex-1 min-w-0"><p class="text-slate-900 font-medium text-sm truncate">' + esc(item.filename) + '</p><p class="text-slate-500 text-xs mt-0.5">' + item.created_at + '</p></div><div class="flex items-center gap-3 flex-shrink-0"><div class="text-right"><p class="text-lime-600 font-bold text-sm">$' + item.total_cost_usd.toFixed(6) + '</p><p class="text-slate-400 text-xs">total cost</p></div><button onclick="toggleCard(this)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"><svg class="w-4 h-4 rotate-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button></div></div><div class="flex gap-4 mt-3 text-xs text-slate-400 flex-wrap"><span>Transcription: <span class="text-lime-600">$' + item.transcription_cost_usd.toFixed(6) + '</span></span><span>Prompt: <span class="text-emerald-600">$' + item.prompt_cost_usd.toFixed(6) + '</span></span><span>MOM: <span class="text-purple-600">$' + (item.mom_cost_usd||0).toFixed(6) + '</span></span></div><div class="detail hidden mt-4 space-y-3"><div class="bg-slate-50 rounded-xl p-4 border border-slate-200"><p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">Transcript</p><pre class="text-slate-600 text-xs leading-relaxed max-h-36 overflow-y-auto">' + esc(item.transcript) + '</pre></div><div class="bg-lime-50 rounded-xl p-4 border border-lime-200"><p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">AI Prompt</p><pre class="text-slate-700 text-xs leading-relaxed max-h-36 overflow-y-auto">' + esc(item.ai_prompt) + '</pre></div>' + (item.mom_report ? '<div class="bg-purple-50 rounded-xl p-4 border border-purple-200"><p class="text-slate-500 text-xs mb-2 font-semibold uppercase tracking-wide">MOM Report</p><div class="text-slate-600 text-xs leading-relaxed max-h-36 overflow-y-auto mom-content">' + escapeHtml(item.mom_report) + '</div></div>' : '') + '<div class="flex gap-2"><button onclick="copyRaw(\'' + btoa(unescape(encodeURIComponent(item.transcript))) + '\')" class="flex-1 py-2 rounded-lg text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors">Copy transcript</button><button onclick="copyRaw(\'' + btoa(unescape(encodeURIComponent(item.ai_prompt))) + '\')" class="flex-1 py-2 rounded-lg text-xs text-lime-700 hover:text-lime-900 bg-lime-100 hover:bg-lime-200 transition-colors">Copy prompt</button></div></div>';
+    return div;
+  }
+
+  function toggleCard(btn) { const detail = btn.closest('.card').querySelector('.detail'); const icon = btn.querySelector('.rotate-icon'); icon.style.transform = detail.classList.toggle('hidden') ? '' : 'rotate(180deg)'; }
+  function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+  function handleDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
+  function handleDrop(e)      { e.preventDefault(); handleDragLeave(); addFiles(Array.from(e.dataTransfer.files)); }
+  function handleFileSelect(e){ addFiles(Array.from(e.target.files)); }
+
+  function addFiles(files) { for (const f of files) { if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) { selectedFiles.push(f); } } renderFileList(); }
+  function removeFile(idx) { selectedFiles.splice(idx, 1); renderFileList(); }
+
+  function renderFileList() {
+    const list = document.getElementById('fileList');
+    if (!selectedFiles.length) { list.classList.add('hidden'); list.innerHTML = ''; document.getElementById('submitBtn').disabled = true; document.getElementById('submitLabel').textContent = 'Transcribe, Prompt & MOM'; return; }
+    list.classList.remove('hidden');
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitLabel').textContent = 'Transcribe ' + selectedFiles.length + ' file(s), Prompt & MOM';
+    list.innerHTML = selectedFiles.map((f, i) => '<div class="flex items-center gap-3 bg-lime-50 border border-lime-200 rounded-xl px-4 py-2"><span class="text-slate-800 text-sm font-medium truncate flex-1">' + esc(f.name) + '</span><span class="text-slate-500 text-xs flex-shrink-0">' + formatBytes(f.size) + '</span><button onclick="removeFile(' + i + ')" class="text-slate-400 hover:text-red-500 transition-colors ml-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>').join('');
+  }
+
+  function clearFile() { selectedFiles = []; renderFileList(); document.getElementById('fileInput').value = ''; }
+
+  async function doTranscribe() {
+    if (!selectedFiles.length) return;
+    show('loadingCard'); hide('resultsCard'); hide('errorCard');
+    document.getElementById('loadingText').textContent = 'Uploading files…';
+    const form = new FormData(); selectedFiles.forEach(f => form.append('files', f));
+    const timers = [setTimeout(() => setLoadingText('Transcribing audio…'), 3000), setTimeout(() => setLoadingText('Building AI prompt…'), 15000), setTimeout(() => setLoadingText('Generating MOM report…'), 25000)];
+    function setLoadingText(t) { if (!document.getElementById('loadingCard').classList.contains('hidden')) document.getElementById('loadingText').textContent = t; }
+    try {
+      const res = await fetch(URLS.transcribe, { method:'POST', headers:{'X-CSRFToken':CSRF}, body:form });
+      const data = await res.json();
+      timers.forEach(clearTimeout); hide('loadingCard');
+      if (!res.ok || data.error) { document.getElementById('errorText').textContent = data.error || 'Unexpected error.'; show('errorCard'); return; }
+      const c = data.cost;
+      document.getElementById('costTranscription').textContent = '$' + c.transcription_usd.toFixed(6);
+      document.getElementById('costPrompt').textContent = '$' + c.prompt_usd.toFixed(6);
+      document.getElementById('costMom').textContent = '$' + (c.mom_usd||0).toFixed(6);
+      document.getElementById('costTotal').textContent = '$' + c.total_usd.toFixed(6);
+      document.getElementById('tokTranscription').textContent = 'in:' + c.transcription_tokens.input + ' out:' + c.transcription_tokens.output;
+      document.getElementById('tokPrompt').textContent = 'in:' + c.prompt_tokens.input + ' out:' + c.prompt_tokens.output;
+      document.getElementById('tokMom').textContent = 'in:' + ((c.mom_tokens||{}).input||0) + ' out:' + ((c.mom_tokens||{}).output||0);
+      document.getElementById('transcriptText').textContent = data.transcript;
+      document.getElementById('promptText').textContent = data.prompt;
+      document.getElementById('momText').innerHTML = data.mom ? markdownToHtml(data.mom) : '';
+      show('resultsCard'); loadStats();
+    } catch(err) { timers.forEach(clearTimeout); hide('loadingCard'); document.getElementById('errorText').textContent = err.message; show('errorCard'); }
+  }
+
+  function markdownToHtml(md) {
+    let h = esc(md);
+    h = h.replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-slate-900 mt-3 mb-2">$1</h1>');
+    h = h.replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-slate-800 mt-3 mb-1">$1</h2>');
+    h = h.replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-slate-700 mt-2 mb-1">$1</h3>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-900">$1</strong>');
+    h = h.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-600">$1</li>');
+    h = h.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-600">$1</li>');
+    h = h.replace(/^---$/gm, '<hr class="my-3 border-slate-200">');
+    h = h.replace(/\|(.+)\|/g, function(m) { if (m.indexOf('---')>=0) return m; var c=m.split('|').filter(function(x){return x.trim()}); return '<tr>'+c.map(function(x){var isH=/\*\*/.test(x); var t=isH?'th':'td'; var cl=isH?'px-3 py-1 text-left text-xs font-semibold text-slate-700 bg-purple-100':'px-3 py-1 text-left text-xs text-slate-600'; return '<'+t+' class="'+cl+'">'+x.trim().replace(/\*\*/g,'')+'</'+t+'>'}).join('')+'</tr>' });
+    h = h.replace(/(<tr>.*?<\/tr>)/gs, '<table class="w-full border-collapse border border-purple-200 rounded-lg overflow-hidden my-2"><tbody>$1</tbody></table>');
+    h = h.replace(/<\/li>\s*<li/g, '</li><li');
+    h = h.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul class="my-1">$1</ul>');
+    h = h.replace(/\n\n/g, '<br><br>'); h = h.replace(/\n/g, '<br>');
+    return h;
+  }
+
+  function downloadPrompt() { var a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([document.getElementById('promptText').textContent],{type:'text/plain'})),download:'prompt.txt'}); a.click(); }
+  function downloadMom() { var a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([document.getElementById('momText').textContent||''],{type:'text/markdown'})),download:'MOM_Report.md'}); a.click(); }
+  async function copyText(id,btn) { await navigator.clipboard.writeText(document.getElementById(id).textContent); flashCopy(btn); }
+  async function copyRaw(b64) { await navigator.clipboard.writeText(decodeURIComponent(escape(atob(b64)))); }
+  function flashCopy(btn) { var o=btn.innerHTML; btn.innerHTML='<svg class="w-3.5 h-3.5 text-lime-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copied!'; btn.classList.add('text-lime-600'); setTimeout(function(){btn.innerHTML=o;btn.classList.remove('text-lime-600')},1500); }
+  function resetUpload() { hide('resultsCard'); hide('errorCard'); clearFile(); }
+  function formatBytes(b) { return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'; }
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escapeHtml(s) { return esc(s); }
+  function show(id) { var el=document.getElementById(id); if(el) el.classList.remove('hidden'); }
+  function hide(id) { var el=document.getElementById(id); if(el) el.classList.add('hidden'); }
+
+  loadStats();
+</script>
+{% endblock %}

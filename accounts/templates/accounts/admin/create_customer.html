@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Create Customer — Admin{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6 animate-fade-up">
+
+  <div class="flex items-center gap-3">
+    <a href="{% url 'accounts:user_list' %}" class="text-slate-500 hover:text-lime-700 transition-colors text-sm font-medium">← Users</a>
+    <span class="text-slate-300">/</span>
+    <h1 class="text-xl font-bold text-slate-900">Create Customer</h1>
+  </div>
+
+  <form method="post" class="card p-6 space-y-5">
+    {% csrf_token %}
+
+    <!-- Django form errors -->
+    {% if form.errors %}
+    <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 space-y-1">
+      {% for field, errs in form.errors.items %}
+        <p><strong>{{ field }}:</strong> {{ errs|join:", " }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Account details -->
+    <div>
+      <h2 class="text-slate-900 font-semibold mb-4">Account Details</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Username *</label>
+          <input name="username" value="{{ form.username.value|default:'' }}" type="text" required
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Email *</label>
+          <input name="email" value="{{ form.email.value|default:'' }}" type="email" required
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Password *</label>
+          <input name="password1" type="password" required
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Confirm Password *</label>
+          <input name="password2" type="password" required
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">First Name</label>
+          <input name="first_name" value="{{ form.first_name.value|default:'' }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Last Name</label>
+          <input name="last_name" value="{{ form.last_name.value|default:'' }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Phone</label>
+          <input name="phone" value="{{ form.phone.value|default:'' }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1.5">Company</label>
+          <input name="company" value="{{ form.company.value|default:'' }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Package assignment -->
+    {% if packages %}
+    <div>
+      <h2 class="text-slate-900 font-semibold mb-4">Package (Optional)</h2>
+      <select name="package_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors">
+        <option value="">— No package —</option>
+        {% for pkg in packages %}
+        <option value="{{ pkg.id }}">
+          {{ pkg.name }} — {% if pkg.max_transcriptions == -1 %}Unlimited{% else %}{{ pkg.max_transcriptions }}{% endif %} transcriptions, up to {{ pkg.max_file_size_mb }} MB/file
+        </option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-slate-400 mt-1.5">The customer will be pre-approved. You can assign or change the package later.</p>
+    </div>
+    {% endif %}
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="px-6 py-2.5 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors shadow-sm">
+        Create Customer
+      </button>
+      <a href="{% url 'accounts:user_list' %}" class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">Cancel</a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

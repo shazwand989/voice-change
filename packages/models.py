@@ -34,28 +34,51 @@ class CustomerPackage(models.Model):
         null=True,
         related_name='assignments',
     )
-    transcriptions_used = models.IntegerField(default=0)
-    uploads_used_mb     = models.FloatField(default=0.0)
-    assigned_at         = models.DateTimeField(auto_now_add=True)
-    updated_at          = models.DateTimeField(auto_now=True)
+    transcriptions_used     = models.IntegerField(default=0)
+    uploads_used_mb         = models.FloatField(default=0.0)
+    override_max_transcriptions = models.IntegerField(
+        null=True, blank=True,
+        help_text='Per-customer override. Leave blank to use the package default. Use -1 for unlimited.',
+    )
+    override_max_file_size_mb   = models.IntegerField(
+        null=True, blank=True,
+        help_text='Per-customer override in MB. Leave blank to use the package default.',
+    )
+    assigned_at             = models.DateTimeField(auto_now_add=True)
+    updated_at              = models.DateTimeField(auto_now=True)
+
+    def effective_max_transcriptions(self):
+        """Return the max transcriptions for this customer, respecting overrides."""
+        if self.override_max_transcriptions is not None:
+            return self.override_max_transcriptions
+        if self.package:
+            return self.package.max_transcriptions
+        return 0
+
+    def effective_max_file_size_mb(self):
+        """Return the max file size for this customer, respecting overrides."""
+        if self.override_max_file_size_mb is not None:
+            return self.override_max_file_size_mb
+        if self.package:
+            return self.package.max_file_size_mb
+        return 0
 
     def transcriptions_remaining(self):
-        if not self.package:
+        if not self.package and self.override_max_transcriptions is None:
             return 0
-        if self.package.max_transcriptions == -1:
+        if self.effective_max_transcriptions() == -1:
             return None  # unlimited
-        return max(0, self.package.max_transcriptions - self.transcriptions_used)
+        return max(0, self.effective_max_transcriptions() - self.transcriptions_used)
 
     def can_transcribe(self):
         remaining = self.transcriptions_remaining()
         return remaining is None or remaining > 0
 
     def usage_percent(self):
-        if not self.package or self.package.max_transcriptions == -1:
+        max_t = self.effective_max_transcriptions()
+        if not self.package or max_t == -1 or max_t == 0:
             return 0
-        if self.package.max_transcriptions == 0:
-            return 100
-        return min(100, int(self.transcriptions_used / self.package.max_transcriptions * 100))
+        return min(100, int(self.transcriptions_used / max_t * 100))
 
     def __str__(self):
         return f'{self.customer.username} — {self.package}'

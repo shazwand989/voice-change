@@ -4,11 +4,27 @@
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}AI Transcriber{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{animation:{'fade-up':'fade-up 0.35s ease forwards'},keyframes:{'fade-up':{'0%':{opacity:'0',transform:'translateY(12px)'},'100%':{opacity:'1',transform:'translateY(0)'}}}}}}</script>
+  <script>tailwind.config={theme:{extend:{animation:{'fade-up':'fade-up 0.35s ease forwards','slide-down':'slide-down 0.2s ease forwards','pulse-ring':'pulse-ring 1.5s cubic-bezier(0.215,.61,.355,1) infinite','spin':'spin 1s linear infinite'},keyframes:{'fade-up':{'0%':{opacity:'0',transform:'translateY(12px)'},'100%':{opacity:'1',transform:'translateY(0)'}},'slide-down':{'0%':{opacity:'0',transform:'translateY(-8px)'},'100%':{opacity:'1',transform:'translateY(0)'}},'pulse-ring':{'0%':{transform:'scale(.8)',opacity:'1'},'100%':{transform:'scale(2)',opacity:'0'}},'spin':{'100%':{transform:'rotate(360deg)'}}}}}}</script>
+  <script>
+    function toggleMenu() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    }
+  </script>
   <style>
     body{background:#f8fafc}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;box-shadow:0 1px 6px rgba(0,0,0,.06)}
     .card-sm{background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem}
+    .drop-zone.dragover{border-color:#84cc16;background:rgba(132,204,22,.08)}
+    pre{white-space:pre-wrap;word-break:break-word}
+    .mom-content h1{font-size:1.125rem;font-weight:700;color:#0f172a;margin-top:0.75rem;margin-bottom:0.5rem}
+    .mom-content h2{font-size:1rem;font-weight:600;color:#1e293b;margin-top:0.75rem;margin-bottom:0.25rem}
+    .mom-content h3{font-size:0.875rem;font-weight:600;color:#334155;margin-top:0.5rem;margin-bottom:0.25rem}
+    .mom-content ul{margin:0.25rem 0;padding-left:1.25rem}
+    .mom-content li{color:#475569}
+    .mom-content table{width:100%;border-collapse:collapse;margin:0.5rem 0}
+    .mom-content th{background:#f3e8ff;color:#374151;font-size:0.75rem;font-weight:600;text-align:left;padding:0.25rem 0.75rem;border:1px solid #e9d5ff}
+    .mom-content td{font-size:0.75rem;color:#475569;padding:0.25rem 0.75rem;border:1px solid #e9d5ff}
+    .mom-content hr{margin:0.75rem 0;border-color:#e2e8f0}
     ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#84cc16;border-radius:2px}
   </style>
   {% block extra_head %}{% endblock %}
@@ -16,37 +32,78 @@
 <body class="min-h-screen font-sans text-slate-800">
 
   <!-- Nav -->
-  <nav class="bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex items-center gap-4 flex-wrap sticky top-0 z-40">
-    <a href="{% url 'landing' %}" class="text-lime-600 font-bold text-sm mr-auto flex items-center gap-2 hover:text-lime-700 transition-colors">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
-      </div>
-      AI<span class="text-slate-900">Transcriber</span>
-    </a>
+  <nav class="bg-white border-b border-slate-200 shadow-sm px-4 md:px-6 py-3 sticky top-0 z-40">
+    <div class="flex items-center gap-3 max-w-5xl mx-auto">
+      <!-- Logo -->
+      <a href="{% url 'landing' %}" class="text-lime-600 font-bold text-sm mr-auto flex items-center gap-2 hover:text-lime-700 transition-colors flex-shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-500 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+        </div>
+        AI<span class="text-slate-900">Transcriber</span>
+      </a>
 
-    {% if user.is_authenticated %}
-      {% if user.is_admin_role %}
-        <a href="{% url 'accounts:admin_dashboard' %}" class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Dashboard</a>
-        <a href="{% url 'accounts:user_list' %}"       class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Users</a>
-        <a href="{% url 'packages:list' %}"            class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Packages</a>
-        <a href="{% url 'transcriber:index' %}"        class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Transcriber</a>
-      {% else %}
-        <a href="{% url 'transcriber:index' %}"  class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">Transcriber</a>
-        <a href="{% url 'accounts:dashboard' %}" class="text-slate-600 hover:text-lime-700 text-sm font-medium transition-colors">My Account</a>
+      {% if user.is_authenticated %}
+        <!-- Desktop nav links -->
+        <div class="hidden md:flex items-center gap-1">
+          {% if user.is_admin_role %}
+            <a href="{% url 'accounts:admin_dashboard' %}" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">Dashboard</a>
+            <a href="{% url 'accounts:user_list' %}"       class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">Users</a>
+            <a href="{% url 'packages:list' %}"            class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">Packages</a>
+            <a href="{% url 'transcriber:index' %}"        class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">Transcriber</a>
+          {% else %}
+            <a href="{% url 'accounts:dashboard' %}"  class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">🏠 Dashboard</a>
+            <a href="{% url 'transcriber:index' %}"   class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">🎙️ Transcribe</a>
+            <a href="{% url 'transcriber:history_page' %}" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">📋 History</a>
+          {% endif %}
+        </div>
+
+        <!-- User pill (desktop) -->
+        <div class="hidden md:flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
+          <span class="text-xs text-slate-500">{{ user.username }}</span>
+          {% if user.is_admin_role %}
+            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
+          {% else %}
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize
+              {% if user.status == 'approved' %}bg-lime-100 text-lime-700
+              {% elif user.status == 'pending' %}bg-yellow-100 text-yellow-700
+              {% else %}bg-red-100 text-red-700{% endif %}">{{ user.status }}</span>
+          {% endif %}
+          <a href="{% url 'accounts:logout' %}" class="text-xs text-slate-400 hover:text-red-500 transition-colors ml-1">Logout</a>
+        </div>
+
+        <!-- Hamburger button (mobile) -->
+        <button onclick="toggleMenu()" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Menu">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
       {% endif %}
+    </div>
 
-      <div class="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
-        <span class="text-xs text-slate-500">{{ user.username }}</span>
-        {% if user.is_admin_role %}
-          <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
-        {% else %}
+    <!-- Mobile menu -->
+    {% if user.is_authenticated %}
+    <div id="mobile-menu" class="hidden md:hidden mt-3 border-t border-slate-100 pt-3 space-y-1 animate-slide-down">
+      {% if user.is_admin_role %}
+        <a href="{% url 'accounts:admin_dashboard' %}" class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">📊 Dashboard</a>
+        <a href="{% url 'accounts:user_list' %}"       class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">👥 Users</a>
+        <a href="{% url 'packages:list' %}"            class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">📦 Packages</a>
+        <a href="{% url 'transcriber:index' %}"        class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">🎙️ Transcriber</a>
+      {% else %}
+        <a href="{% url 'accounts:dashboard' %}"  class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">🏠 Dashboard</a>
+        <a href="{% url 'transcriber:index' %}"   class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">🎙️ Transcribe</a>
+        <a href="{% url 'transcriber:history_page' %}" class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-lime-700 hover:bg-lime-50 transition-colors">📋 History</a>
+      {% endif %}
+      <div class="border-t border-slate-100 pt-2 mt-2 px-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500">{{ user.username }}</span>
+          {% if not user.is_admin_role %}
           <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize
             {% if user.status == 'approved' %}bg-lime-100 text-lime-700
             {% elif user.status == 'pending' %}bg-yellow-100 text-yellow-700
             {% else %}bg-red-100 text-red-700{% endif %}">{{ user.status }}</span>
-        {% endif %}
-        <a href="{% url 'accounts:logout' %}" class="text-xs text-slate-400 hover:text-red-500 transition-colors ml-1">Logout</a>
+          {% endif %}
+        </div>
+        <a href="{% url 'accounts:logout' %}" class="text-xs text-slate-400 hover:text-red-500 transition-colors">Logout</a>
       </div>
+    </div>
     {% endif %}
   </nav>
 

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username }} — Admin{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5 animate-fade-up">
+
+  <div class="flex items-center gap-3">
+    <a href="{% url 'accounts:user_list' %}" class="text-slate-500 hover:text-lime-700 transition-colors text-sm font-medium">← Users</a>
+    <span class="text-slate-300">/</span>
+    <h1 class="text-xl font-bold text-slate-900">{{ profile_user.username }}</h1>
+    <span class="text-xs px-2.5 py-1 rounded-full font-medium
+      {% if profile_user.status == 'approved' %}bg-lime-100 text-lime-700
+      {% elif profile_user.status == 'pending' %}bg-yellow-100 text-yellow-700
+      {% elif profile_user.status == 'rejected' %}bg-red-100 text-red-700
+      {% else %}bg-slate-100 text-slate-600{% endif %}">
+      {{ profile_user.get_status_display }}
+    </span>
+  </div>
+
+  <!-- Profile info -->
+  <div class="card p-6 grid grid-cols-2 gap-4 text-sm">
+    <div><p class="text-slate-500 text-xs mb-1">Email</p><p class="text-slate-900">{{ profile_user.email|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Full name</p><p class="text-slate-900">{{ profile_user.get_full_name|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Phone</p><p class="text-slate-900">{{ profile_user.phone|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Company</p><p class="text-slate-900">{{ profile_user.company|default:"—" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Joined</p><p class="text-slate-900">{{ profile_user.date_joined|date:"M d, Y H:i" }}</p></div>
+    <div><p class="text-slate-500 text-xs mb-1">Last login</p><p class="text-slate-900">{{ profile_user.last_login|date:"M d, Y H:i"|default:"Never" }}</p></div>
+  </div>
+
+  <!-- Edit profile -->
+  <details class="card p-6 group" {% if edit_form.errors %}open{% endif %}>
+    <summary class="cursor-pointer text-slate-900 font-semibold select-none">Edit Profile</summary>
+    <form method="post" class="mt-4 space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit_profile">
+      {% if edit_form.errors %}
+      <div class="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700 space-y-1 mb-2">
+        {% for field, errs in edit_form.errors.items %}<p><strong>{{ field }}:</strong> {{ errs|join:", " }}</p>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Username</label>
+          <input name="username" value="{{ edit_form.username.value|default:profile_user.username }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Email</label>
+          <input name="email" value="{{ edit_form.email.value|default:profile_user.email }}" type="email"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">First Name</label>
+          <input name="first_name" value="{{ edit_form.first_name.value|default:profile_user.first_name }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Last Name</label>
+          <input name="last_name" value="{{ edit_form.last_name.value|default:profile_user.last_name }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Company</label>
+          <input name="company" value="{{ edit_form.company.value|default:profile_user.company }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Phone</label>
+          <input name="phone" value="{{ edit_form.phone.value|default:profile_user.phone }}" type="text"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+      </div>
+      <button type="submit" class="px-5 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">Save Changes</button>
+    </form>
+  </details>
+
+  <!-- Status actions -->
+  <div class="card p-6">
+    <h2 class="text-slate-900 font-semibold mb-4">Account Actions</h2>
+    <div class="flex flex-wrap gap-2">
+      {% if profile_user.status != 'approved' %}
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="approve">
+        <button class="px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">✓ Approve</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status == 'approved' %}
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="deactivate">
+        <button class="px-4 py-2 rounded-xl bg-slate-500 hover:bg-slate-400 text-white text-sm font-medium transition-colors">⊘ Deactivate</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status == 'deactivated' %}
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="reactivate">
+        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors">↺ Reactivate</button>
+      </form>
+      {% endif %}
+      {% if profile_user.status not in 'rejected,deactivated' %}
+      <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="action" value="reject">
+        <button class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition-colors">✕ Reject</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Package assignment -->
+  <div class="card p-6">
+    <h2 class="text-slate-900 font-semibold mb-4">Package Assignment</h2>
+    {% if cp %}
+    <div class="card-sm rounded-xl p-4 mb-4">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <p class="text-slate-900 font-medium">{{ cp.package.name }}</p>
+          <p class="text-slate-500 text-xs mt-0.5">
+            Used: {{ cp.transcriptions_used }} / {% if cp.effective_max_transcriptions == -1 %}∞{% else %}{{ cp.effective_max_transcriptions }}{% endif %} transcriptions
+            {% if cp.override_max_transcriptions is not None %}
+              <span class="text-amber-600">(overridden from {{ cp.package.max_transcriptions }})</span>
+            {% endif %}
+          </p>
+          <p class="text-slate-500 text-xs">
+            Uploads: {{ cp.uploads_used_mb|floatformat:1 }} MB
+            {% if cp.override_max_file_size_mb is not None %}
+              <span class="text-amber-600">| Max file: {{ cp.effective_max_file_size_mb }} MB (overridden)</span>
+            {% else %}
+              <span class="text-slate-400">| Max file: {{ cp.effective_max_file_size_mb }} MB</span>
+            {% endif %}
+          </p>
+        </div>
+        <span class="text-xs text-lime-600 font-medium">Active</span>
+      </div>
+    </div>
+    {% endif %}
+    {% if packages %}
+    <form method="post" class="flex gap-3 flex-wrap items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="assign_package">
+      <div class="flex-1 min-w-48">
+        <label class="block text-xs text-slate-600 font-semibold mb-1.5">Assign package{% if cp %} (resets usage &amp; overrides){% endif %}</label>
+        <select name="package_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors">
+          {% for pkg in packages %}
+          <option value="{{ pkg.id }}" {% if cp and cp.package.id == pkg.id %}selected{% endif %}>{{ pkg.name }} ({{ pkg.max_transcriptions|default:"∞" }} transcriptions)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-5 py-2.5 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">Assign</button>
+    </form>
+    {% else %}
+    <p class="text-slate-500 text-sm">No packages available. <a href="{% url 'packages:create' %}" class="text-lime-600 hover:text-lime-700 font-medium transition-colors">Create one →</a></p>
+    {% endif %}
+  </div>
+
+  <!-- Usage controls (reset + overrides) — only when a package is assigned -->
+  {% if cp %}
+  <div class="card p-6">
+    <h2 class="text-slate-900 font-semibold mb-4">Usage Controls</h2>
+
+    <!-- Reset usage -->
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-5 pb-5 border-b border-slate-100">
+      <div>
+        <p class="text-slate-900 text-sm font-medium">Reset Usage Counters</p>
+        <p class="text-slate-500 text-xs mt-0.5">Sets transcriptions used &amp; uploads used back to 0.</p>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reset_usage">
+        <button class="px-4 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium transition-colors">Reset Usage</button>
+      </form>
+    </div>
+
+    <!-- Per-customer overrides -->
+    <form method="post" class="space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="set_overrides">
+      <p class="text-slate-900 text-sm font-medium">Per-Customer Limits (override package defaults)</p>
+      <p class="text-slate-500 text-xs">Leave blank to use the package's default limits. Set -1 for unlimited transcriptions.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Max Transcriptions</label>
+          <input name="override_max_transcriptions" type="number" step="1"
+                 value="{{ cp.override_max_transcriptions|default_if_none:'' }}"
+                 placeholder="Package: {% if cp.package.max_transcriptions == -1 %}∞{% else %}{{ cp.package.max_transcriptions }}{% endif %}"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 font-semibold mb-1">Max File Size (MB)</label>
+          <input name="override_max_file_size_mb" type="number" step="1"
+                 value="{{ cp.override_max_file_size_mb|default_if_none:'' }}"
+                 placeholder="Package: {{ cp.package.max_file_size_mb }} MB"
+                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-lime-500 transition-colors" />
+        </div>
+      </div>
+      <button type="submit" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium transition-colors">Save Limits</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Recent transcriptions -->
+  {% if transcriptions %}
+  <div>
+    <h2 class="text-slate-900 font-semibold mb-3">Recent Transcriptions</h2>
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-100 bg-slate-50">
+          <tr>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">File</th>
+            <th class="text-left text-xs text-slate-500 font-semibold px-5 py-3">Date</th>
+            <th class="text-right text-xs text-slate-500 font-semibold px-5 py-3">Cost</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for t in transcriptions %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-5 py-3 text-slate-900 max-w-xs truncate">{{ t.filename }}</td>
+            <td class="px-5 py-3 text-slate-500">{{ t.created_at|date:"M d, Y H:i" }}</td>
+            <td class="px-5 py-3 text-lime-600 text-right font-medium">${{ t.total_cost_usd|floatformat:6 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

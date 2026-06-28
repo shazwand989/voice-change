@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}History — AI Transcriber{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-5 animate-fade-up">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">History</h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        {{ total_count }} transcription{{ total_count|pluralize }} ·
+        <span class="text-lime-600 font-medium">${{ agg_cost|floatformat:4 }}</span> total cost
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'transcriber:index' %}" class="px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors shadow-sm">+ New Transcription</a>
+      <a href="{% url 'accounts:dashboard' %}" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">← Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="card p-4 space-y-3">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div>
+        <label class="block text-[11px] text-slate-500 font-semibold mb-1">From Date</label>
+        <input type="date" name="from" value="{{ date_from }}"
+               class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors" />
+      </div>
+      <div>
+        <label class="block text-[11px] text-slate-500 font-semibold mb-1">To Date</label>
+        <input type="date" name="to" value="{{ date_to }}"
+               class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-lime-500 transition-colors" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="block text-[11px] text-slate-500 font-semibold mb-1">Search transcripts</label>
+        <input type="text" name="q" value="{{ search }}" placeholder="Filename, keywords…"
+               class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-lime-500 transition-colors" />
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap items-center">
+      <select name="sort" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-lime-500 transition-colors">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest first</option>
+        <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest first</option>
+        <option value="cost_high" {% if sort == 'cost_high' %}selected{% endif %}>Highest cost</option>
+        <option value="cost_low" {% if sort == 'cost_low' %}selected{% endif %}>Lowest cost</option>
+      </select>
+      <button type="submit" class="px-4 py-2 rounded-lg bg-lime-600 hover:bg-lime-500 text-white text-xs font-medium transition-colors">Apply Filters</button>
+      {% if date_from or date_to or search %}<a href="?" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-800 text-xs transition-colors">Clear</a>{% endif %}
+    </div>
+  </form>
+
+  <!-- Items -->
+  {% if items %}
+  <div class="space-y-2">
+    {% for t in items %}
+    <details class="card group">
+      <summary class="cursor-pointer p-4 flex items-center justify-between gap-3 select-none">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-lg flex-shrink-0">🎧</span>
+          <div class="min-w-0">
+            <p class="text-slate-800 text-sm font-medium truncate">{{ t.filename }}</p>
+            <p class="text-slate-400 text-xs">{{ t.created_at|date:"M d, Y · g:i A" }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="text-lime-600 text-xs font-bold">${{ t.total_cost_usd|floatformat:4 }}</span>
+          <span class="text-slate-300 text-xs group-open:rotate-90 transition-transform">▶</span>
+        </div>
+      </summary>
+      <div class="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
+        <!-- Cost breakdown -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="card-sm rounded-lg p-2">
+            <p class="text-[10px] text-slate-500">Transcription</p>
+            <p class="text-xs text-lime-600 font-bold">${{ t.transcription_cost_usd|floatformat:4 }}</p>
+            <p class="text-[9px] text-slate-400">{{ t.transcription_in_tokens|add:t.transcription_out_tokens }} tokens</p>
+          </div>
+          <div class="card-sm rounded-lg p-2">
+            <p class="text-[10px] text-slate-500">AI Prompt</p>
+            <p class="text-xs text-lime-600 font-bold">${{ t.prompt_cost_usd|floatformat:4 }}</p>
+            <p class="text-[9px] text-slate-400">{{ t.prompt_in_tokens|add:t.prompt_out_tokens }} tokens</p>
+          </div>
+          <div class="card-sm rounded-lg p-2">
+            <p class="text-[10px] text-slate-500">MOM Report</p>
+            <p class="text-xs text-lime-600 font-bold">${{ t.mom_cost_usd|floatformat:4 }}</p>
+            <p class="text-[9px] text-slate-400">{{ t.mom_in_tokens|add:t.mom_out_tokens }} tokens</p>
+          </div>
+        </div>
+        {% if t.transcript %}
+        <div>
+          <p class="text-[10px] text-slate-500 font-semibold mb-1">Transcription</p>
+          <p class="text-xs text-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap bg-slate-50 rounded-lg p-2.5">{{ t.transcript|truncatewords:80 }}</p>
+        </div>
+        {% endif %}
+        {% if t.ai_prompt %}
+        <div>
+          <p class="text-[10px] text-slate-500 font-semibold mb-1">AI Prompt</p>
+          <p class="text-xs text-slate-700 max-h-16 overflow-y-auto whitespace-pre-wrap bg-amber-50 rounded-lg p-2.5 border border-amber-100">{{ t.ai_prompt|truncatewords:60 }}</p>
+        </div>
+        {% endif %}
+        {% if t.mom_report %}
+        <div>
+          <p class="text-[10px] text-slate-500 font-semibold mb-1">Minutes of Meeting</p>
+          <div class="text-xs text-slate-700 max-h-32 overflow-y-auto bg-purple-50 rounded-lg p-2.5 border border-purple-100 mom-content">{{ t.mom_report|truncatewords:100|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="flex items-center justify-center gap-1 text-sm">
+    {% if page > 1 %}
+    <a href="?page={{ page|add:'-1' }}&sort={{ sort }}&from={{ date_from }}&to={{ date_to }}&q={{ search }}" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">‹ Prev</a>
+    {% endif %}
+    {% for p in page_range %}
+    <a href="?page={{ p }}&sort={{ sort }}&from={{ date_from }}&to={{ date_to }}&q={{ search }}"
+       class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-colors
+              {% if p == page %}bg-lime-600 text-white{% else %}border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+      {{ p }}
+    </a>
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="?page={{ page|add:'1' }}&sort={{ sort }}&from={{ date_from }}&to={{ date_to }}&q={{ search }}" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">Next ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card p-12 text-center">
+    <p class="text-4xl mb-3">📭</p>
+    <p class="text-slate-600 text-sm font-medium">No transcriptions found</p>
+    {% if search or date_from or date_to %}
+    <p class="text-slate-400 text-xs mt-1">Try adjusting your filters.</p>
+    <a href="?" class="inline-block mt-3 text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">Clear filters →</a>
+    {% else %}
+    <p class="text-slate-400 text-xs mt-1">Upload your first file to get started.</p>
+    <a href="{% url 'transcriber:index' %}" class="inline-block mt-3 px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium transition-colors">Transcribe Now</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

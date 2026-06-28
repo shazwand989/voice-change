@@ -2,8 +2,6 @@
 
 Django SaaS app — transcribes audio/video files and generates AI prompts using OpenAI.
 
----
-
 ## Quick Start
 
 ### 1. Configure `.env`

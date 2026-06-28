@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AI Transcriber{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6 animate-fade-up">
+
+  <!-- Welcome + Quick Stats -->
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <p class="text-slate-500 text-sm">Welcome back</p>
+      <h1 class="text-2xl font-bold text-slate-900">Hi {{ user.first_name|default:user.username }} 👋</h1>
+    </div>
+    <div class="flex gap-4 text-sm">
+      <div class="text-center">
+        <p class="text-2xl font-bold text-slate-900">{{ total_runs }}</p>
+        <p class="text-xs text-slate-500">Total Runs</p>
+      </div>
+      <div class="text-center">
+        <p class="text-2xl font-bold text-slate-900">{{ this_month }}</p>
+        <p class="text-xs text-slate-500">This Month</p>
+      </div>
+      <div class="text-center">
+        <p class="text-2xl font-bold text-lime-600">${{ total_cost|floatformat:4 }}</p>
+        <p class="text-xs text-slate-500">Total Spent</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- ── Left column (main) ──────────────────────────────────────────── -->
+    <div class="lg:col-span-2 space-y-5">
+
+      <!-- Package status card -->
+      {% if cp %}
+      <div class="card p-5">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <p class="text-slate-500 text-xs uppercase tracking-wide">Active Plan</p>
+            <p class="text-slate-900 font-bold text-lg">{{ cp.package.name }}</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-lime-100 text-lime-700 font-medium">Active</span>
+        </div>
+        {% if cp.package.max_transcriptions != -1 and cp.effective_max_transcriptions != -1 %}
+        <div>
+          <div class="flex justify-between text-xs text-slate-500 mb-1.5">
+            <span>Usage</span>
+            <span>{{ cp.transcriptions_used }} / {{ cp.effective_max_transcriptions }} transcriptions</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-500 {% if cp.usage_percent > 80 %}bg-red-500{% elif cp.usage_percent > 50 %}bg-amber-400{% else %}bg-gradient-to-r from-lime-500 to-emerald-500{% endif %}"
+                 style="width:{{ cp.usage_percent }}%"></div>
+          </div>
+          {% if not cp.can_transcribe %}
+          <p class="text-red-600 text-xs mt-2 flex items-center gap-1">
+            <span>⚠</span> Limit reached. Contact admin for an upgrade.
+          </p>
+          {% elif cp.usage_percent > 80 %}
+          <p class="text-amber-600 text-xs mt-2">Running low — consider upgrading soon.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-3 gap-3 text-center pt-3 mt-3 border-t border-slate-100">
+          <div>
+            <p class="text-slate-500 text-xs">Remaining</p>
+            <p class="text-slate-900 font-bold text-sm">{% if cp.transcriptions_remaining == None %}∞{% else %}{{ cp.transcriptions_remaining }}{% endif %}</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs">Max File</p>
+            <p class="text-slate-900 font-bold text-sm">{{ cp.effective_max_file_size_mb }} MB</p>
+          </div>
+          <div>
+            <p class="text-slate-500 text-xs">Uploaded</p>
+            <p class="text-slate-900 font-bold text-sm">{{ cp.uploads_used_mb|floatformat:1 }} MB</p>
+          </div>
+        </div>
+      </div>
+
+      {% if cp.can_transcribe %}
+      <a href="{% url 'transcriber:index' %}"
+         class="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 shadow-lg shadow-lime-300/30 transition-all duration-300 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Upload & Transcribe
+      </a>
+      {% endif %}
+
+      {% else %}
+      <div class="card p-6 text-center border-yellow-200 bg-yellow-50">
+        <p class="text-yellow-700 text-sm font-medium">
+          {% if user.status == 'pending' %}
+            ⏳ Your account is pending admin approval.
+          {% elif user.status == 'approved' %}
+            ✅ You're approved but no package has been assigned yet. Please contact admin.
+          {% else %}
+            Your account status: <span class="capitalize">{{ user.status }}</span>
+          {% endif %}
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- Quick shortcuts -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <a href="{% url 'transcriber:index' %}" class="card-sm rounded-xl p-4 hover:border-lime-300 hover:bg-lime-50/50 transition-all group flex flex-col items-center text-center gap-1.5">
+          <span class="text-2xl">🎙️</span>
+          <span class="text-xs font-medium text-slate-700 group-hover:text-lime-700">Transcribe</span>
+        </a>
+        <a href="{% url 'transcriber:history_page' %}" class="card-sm rounded-xl p-4 hover:border-lime-300 hover:bg-lime-50/50 transition-all group flex flex-col items-center text-center gap-1.5">
+          <span class="text-2xl">📋</span>
+          <span class="text-xs font-medium text-slate-700 group-hover:text-lime-700">History</span>
+        </a>
+        <a href="{% url 'accounts:dashboard' %}" class="card-sm rounded-xl p-4 hover:border-lime-300 hover:bg-lime-50/50 transition-all group flex flex-col items-center text-center gap-1.5">
+          <span class="text-2xl">⚙️</span>
+          <span class="text-xs font-medium text-slate-700 group-hover:text-lime-700">Account</span>
+        </a>
+      </div>
+
+      <!-- Recent transcriptions (compact cards) -->
+      {% if recent %}
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-slate-900 font-semibold text-sm">Recent Transcriptions</h2>
+          <a href="{% url 'transcriber:history_page' %}" class="text-xs text-lime-600 hover:text-lime-700 font-medium transition-colors">View all →</a>
+        </div>
+        <div class="space-y-2">
+          {% for t in recent %}
+          <div class="card-sm rounded-xl p-4 flex items-center justify-between gap-3 group hover:border-lime-200 transition-colors">
+            <div class="min-w-0 flex items-center gap-3">
+              <span class="text-lg flex-shrink-0">🎧</span>
+              <div class="min-w-0">
+                <p class="text-slate-800 text-sm truncate">{{ t.filename }}</p>
+                <p class="text-slate-400 text-xs">{{ t.created_at|date:"M d, Y · g:i A" }}</p>
+              </div>
+            </div>
+            <span class="text-lime-600 text-xs font-bold flex-shrink-0">${{ t.total_cost_usd|floatformat:4 }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Right column (sidebar) ───────────────────────────────────────── -->
+    <div class="space-y-5">
+
+      <!-- Activity Timeline -->
+      {% if timeline %}
+      <div>
+        <h2 class="text-slate-900 font-semibold text-sm mb-3">Activity Timeline</h2>
+        <div class="space-y-0 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
+          {% for item in timeline|slice:":8" %}
+          <div class="flex gap-3 py-2 relative">
+            <div class="flex-shrink-0 w-[30px] flex items-center justify-center z-10">
+              <span class="text-sm">
+                {% if item.type == 'transcribe' %}🎙️
+                {% elif item.type == 'prompt' %}🤖
+                {% else %}📝{% endif %}
+              </span>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs text-slate-700">{{ item.label }}</p>
+              <p class="text-[10px] text-slate-400">{{ item.date|date:"M d · g:i A" }}</p>
+              <p class="text-[10px] text-slate-400 truncate">{{ item.detail }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Feature Suggestions -->
+      {% if suggestions %}
+      <div>
+        <h2 class="text-slate-900 font-semibold text-sm mb-3">💡 Suggestions for You</h2>
+        <div class="space-y-2">
+          {% for s in suggestions %}
+          <div class="card-sm rounded-xl p-3.5 {% if s.url %}hover:border-lime-200 transition-colors{% endif %}">
+            <div class="flex gap-2.5">
+              <span class="text-lg flex-shrink-0">{{ s.icon }}</span>
+              <div class="min-w-0">
+                <p class="text-slate-800 text-xs font-semibold">{{ s.title }}</p>
+                <p class="text-slate-500 text-[11px] mt-0.5 leading-relaxed">{{ s.desc }}</p>
+                {% if s.url %}
+                <a href="{{ s.url }}" class="inline-block mt-1.5 text-[11px] text-lime-600 hover:text-lime-700 font-medium transition-colors">{{ s.action }} →</a>
+                {% else %}
+                <span class="inline-block mt-1.5 text-[11px] text-slate-400">{{ s.action }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

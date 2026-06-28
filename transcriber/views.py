@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -19,8 +19,8 @@ from .pipeline import AUDIO_EXTENSIONS, build_ai_prompt, build_mom, prepare_medi
 ALLOWED_EXTENSIONS = AUDIO_EXTENSIONS | {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
 TRIAL_MAX_FILE_SIZE_MB = int(os.environ.get("TRIAL_MAX_FILE_SIZE_MB", 5))  # set in .env
-TRIAL_WHATSAPP        = "019-254 8927"
-TRIAL_WHATSAPP_LINK   = "https://wa.me/60192548927"
+TRIAL_WHATSAPP        = os.environ.get("TRIAL_WHATSAPP", "019-254 8927")
+TRIAL_WHATSAPP_LINK   = os.environ.get("TRIAL_WHATSAPP_LINK", "https://wa.me/60192548927")
 TEST_MODE             = os.environ.get("TEST_MODE", "").lower() in ("1", "true", "yes")
 
 
@@ -29,12 +29,12 @@ def _get_client_ip(request):
     return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "")
 
 # ── Pricing (USD per 1 M tokens) ─────────────────────────────────────────────
-TRANSCRIPTION_INPUT_PER_1M  = 1.25   # gpt-4o-mini-transcribe
-TRANSCRIPTION_OUTPUT_PER_1M = 5.00
-PROMPT_INPUT_PER_1M  = 0.40          # gpt-4.1-mini
-PROMPT_OUTPUT_PER_1M = 1.60
-MOM_INPUT_PER_1M     = 0.40          # gpt-4.1-mini (same model)
-MOM_OUTPUT_PER_1M    = 1.60
+TRANSCRIPTION_INPUT_PER_1M  = float(os.environ.get("TRANSCRIPTION_INPUT_PER_1M", 1.25))
+TRANSCRIPTION_OUTPUT_PER_1M = float(os.environ.get("TRANSCRIPTION_OUTPUT_PER_1M", 5.00))
+PROMPT_INPUT_PER_1M  = float(os.environ.get("PROMPT_INPUT_PER_1M", 0.40))
+PROMPT_OUTPUT_PER_1M = float(os.environ.get("PROMPT_OUTPUT_PER_1M", 1.60))
+MOM_INPUT_PER_1M     = float(os.environ.get("MOM_INPUT_PER_1M", 0.40))
+MOM_OUTPUT_PER_1M    = float(os.environ.get("MOM_OUTPUT_PER_1M", 1.60))
 
 
 def _calc_cost(in_tok: int, out_tok: int, in_rate: float, out_rate: float) -> float:
@@ -199,6 +199,75 @@ def history(request):
     for item in items:
         item["created_at"] = item["created_at"].strftime("%Y-%m-%d %H:%M")
     return JsonResponse(items, safe=False)
+
+
+@login_required
+def history_page(request):
+    """Render the full-featured History page with server-side filtering."""
+    from datetime import date, timedelta
+    from django.db.models import Q
+
+    qs = Transcription.objects.all() if request.user.is_admin_role() else Transcription.objects.filter(user=request.user)
+
+    # Filters
+    date_from   = request.GET.get('from', '')
+    date_to     = request.GET.get('to', '')
+    search      = request.GET.get('q', '').strip()
+    sort        = request.GET.get('sort', 'newest')  # newest, oldest, cost_high, cost_low
+    page        = int(request.GET.get('page', 1))
+
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+    if search:
+        qs = qs.filter(
+            Q(filename__icontains=search) |
+            Q(transcript__icontains=search) |
+            Q(ai_prompt__icontains=search) |
+            Q(mom_report__icontains=search)
+        )
+
+    # Sort
+    sort_map = {
+        'newest':   '-created_at',
+        'oldest':   'created_at',
+        'cost_high': '-total_cost_usd',
+        'cost_low':  'total_cost_usd',
+    }
+    qs = qs.order_by(sort_map.get(sort, '-created_at'))
+
+    # Pagination (25 per page)
+    per_page = 25
+    total_count = qs.count()
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    items = qs[(page - 1) * per_page:page * per_page]
+
+    # Aggregate filter stats
+    agg = qs.aggregate(
+        total_runs=Count("id"),
+        total_cost=Sum("total_cost_usd"),
+    )
+
+    # Visible page range
+    page_start = max(1, page - 2)
+    page_end   = min(total_pages, page + 2)
+    page_range = list(range(page_start, page_end + 1))
+
+    return render(request, 'transcriber/customer/history.html', {
+        'items': items,
+        'total_count': total_count,
+        'total_pages': total_pages,
+        'page': page,
+        'page_range': page_range,
+        'sort': sort,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search': search,
+        'agg_runs': agg['total_runs'] or 0,
+        'agg_cost': agg['total_cost'] or 0.0,
+    })
 
 
 @login_required
